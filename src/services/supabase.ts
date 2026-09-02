@@ -335,6 +335,60 @@ export const uploadBannerImage = async (file: File): Promise<string> => {
   });
 };
 
+// Upload Welcome Page Wallpaper (Storage Bucket: product-images/wallpapers or Base64 data URL)
+export const uploadWelcomeWallpaper = async (file: File): Promise<string> => {
+  const client = getSupabaseClient();
+
+  if (client) {
+    try {
+      const fileExt = file.name.split('.').pop() || 'jpg';
+      const cleanFileName = `wallpaper_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const filePath = `wallpapers/${cleanFileName}`;
+
+      let { error: uploadError } = await client.storage
+        .from('product-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        await ensureProductBucket(client);
+        const retryResult = await client.storage
+          .from('product-images')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+        uploadError = retryResult.error;
+      }
+
+      if (!uploadError) {
+        const { data } = client.storage.from('product-images').getPublicUrl(filePath);
+        if (data?.publicUrl) {
+          return data.publicUrl;
+        }
+      }
+    } catch (err) {
+      console.warn('Wallpaper storage bucket upload fallback:', err);
+    }
+  }
+
+  // Fallback to Base64 Data URL
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        resolve(e.target.result as string);
+      } else {
+        reject(new Error('Gagal membaca file wallpaper'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Gagal membaca berkas wallpaper'));
+    reader.readAsDataURL(file);
+  });
+};
+
 /* ==========================================================================
    PRODUCTS CRUD
    ========================================================================== */

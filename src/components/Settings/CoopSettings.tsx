@@ -58,6 +58,7 @@ import {
   saveConfigToSupabase,
   uploadCoopLogo,
   uploadBannerImage,
+  uploadWelcomeWallpaper,
   SUPABASE_SQL_SCHEMA,
   getMissingTables,
 } from '../../services/supabase';
@@ -77,6 +78,7 @@ interface CoopSettingsProps {
     users?: UserProfile[];
   }) => void;
   onResetToDefault: () => void;
+  onPreviewWelcome?: () => void;
 }
 
 export const CoopSettings: React.FC<CoopSettingsProps> = ({
@@ -88,6 +90,7 @@ export const CoopSettings: React.FC<CoopSettingsProps> = ({
   onSaveConfig,
   onRestoreAllData,
   onResetToDefault,
+  onPreviewWelcome,
 }) => {
   const [formConfig, setFormConfig] = useState<CoopConfig>(() => ({
     ...config,
@@ -268,6 +271,46 @@ export const CoopSettings: React.FC<CoopSettingsProps> = ({
     onSaveConfig(updatedConfig);
     await saveConfigToSupabase(updatedConfig);
     showToast('Logo koperasi berhasil dihapus.', 'info');
+  };
+
+  const [isUploadingWallpaper, setIsUploadingWallpaper] = useState<boolean>(false);
+
+  const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Harap pilih file gambar (PNG, JPG, WebP)', 'error');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Ukuran gambar wallpaper maksimal 10MB', 'error');
+      return;
+    }
+
+    setIsUploadingWallpaper(true);
+    try {
+      const url = await uploadWelcomeWallpaper(file);
+      const updatedConfig = { ...formConfig, welcomeWallpaperUrl: url };
+      setFormConfig(updatedConfig);
+      onSaveConfig(updatedConfig);
+      await saveConfigToSupabase(updatedConfig);
+      showToast('Wallpaper Welcome Page berhasil diunggah & tersimpan di Supabase Cloud!', 'success');
+    } catch (err: any) {
+      showToast('Gagal mengunggah wallpaper: ' + (err?.message || String(err)), 'error');
+    } finally {
+      setIsUploadingWallpaper(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveWallpaper = async () => {
+    const updatedConfig = { ...formConfig, welcomeWallpaperUrl: undefined };
+    setFormConfig(updatedConfig);
+    onSaveConfig(updatedConfig);
+    await saveConfigToSupabase(updatedConfig);
+    showToast('Wallpaper dihapus. Halaman welcome kembali menggunakan latar polos bawaan.', 'info');
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -756,6 +799,131 @@ export const CoopSettings: React.FC<CoopSettingsProps> = ({
                 onChange={(e) => setFormConfig({ ...formConfig, phone: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Pengaturan Wallpaper Layar Pembuka (Welcome Page) */}
+        <div className="bg-white p-5 rounded-3xl border border-white shadow-[10px_10px_30px_rgba(0,0,0,0.2),-10px_-10px_30px_rgba(255,255,255,0.8)] space-y-4 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold shadow-xs">
+                <ImageIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Wallpaper Layar Pembuka (Welcome Page)</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Kustomisasi latar belakang layar awal aplikasi saat dibuka. Terintegrasi & tersimpan otomatis di Supabase Cloud.
+                </p>
+              </div>
+            </div>
+
+            {onPreviewWelcome && (
+              <button
+                type="button"
+                onClick={onPreviewWelcome}
+                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs"
+              >
+                <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Lihat Layar Welcome</span>
+              </button>
+            )}
+          </div>
+
+          <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span>Foto / Wallpaper Welcome Screen</span>
+              </label>
+              {formConfig.welcomeWallpaperUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveWallpaper}
+                  className="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Hapus Wallpaper (Gunakan Polos)
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-5">
+              {/* Preview Box */}
+              <div className="w-40 h-24 rounded-2xl bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center p-1 shrink-0 shadow-inner overflow-hidden relative group">
+                {formConfig.welcomeWallpaperUrl ? (
+                  <img
+                    src={formConfig.welcomeWallpaperUrl}
+                    alt="Welcome Wallpaper Preview"
+                    className="w-full h-full object-cover rounded-xl"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="text-center text-slate-400 p-2">
+                    <ImageIcon className="w-6 h-6 mx-auto mb-1 opacity-50 text-slate-400" />
+                    <span className="text-[10px] block leading-tight font-medium text-slate-300">
+                      Latar Polos Standar
+                    </span>
+                  </div>
+                )}
+                {/* Mini badge simulation on preview */}
+                <div className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-full bg-emerald-600/90 text-white text-[8px] font-black pointer-events-none">
+                  Ayo Belanja
+                </div>
+              </div>
+
+              {/* Upload Controls */}
+              <div className="flex-1 w-full space-y-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold cursor-pointer transition shadow-xs active:scale-95">
+                    {isUploadingWallpaper ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Mengunggah Wallpaper ke Supabase...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        <span>Unggah Wallpaper Baru</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleWallpaperUpload}
+                      disabled={isUploadingWallpaper}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Format JPG, PNG, WebP (Rekomendasi Landscape / Resolusi HD)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    placeholder="Atau tautan URL gambar wallpaper online (https://...)"
+                    value={formConfig.welcomeWallpaperUrl || ''}
+                    onChange={(e) => {
+                      const updated = { ...formConfig, welcomeWallpaperUrl: e.target.value || undefined };
+                      setFormConfig(updated);
+                      onSaveConfig(updated);
+                      saveConfigToSupabase(updated);
+                    }}
+                    className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-600"
+                  />
+                </div>
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                  {formConfig.welcomeWallpaperUrl
+                    ? 'Wallpaper aktif akan tampil sebagai layar penuh pada Welcome Screen.'
+                    : 'Belum ada wallpaper yang diunggah. Welcome Screen akan menampilkan latar polos elegan tanpa teks/gambar.'}
+                </p>
+              </div>
             </div>
           </div>
         </div>

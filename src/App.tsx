@@ -54,6 +54,8 @@ import { UserManagement } from './components/UserManagement/UserManagement';
 import { CoopSettings } from './components/Settings/CoopSettings';
 import { QuickProductLookupModal } from './components/Scanner/QuickProductLookupModal';
 import { ReceiptModal } from './components/Cashier/ReceiptModal';
+import { WelcomeScreen } from './components/Welcome/WelcomeScreen';
+import { AccountSelectionScreen } from './components/Auth/AccountSelectionScreen';
 import { ShoppingCart, PackagePlus } from 'lucide-react';
 
 const STORAGE_KEYS = {
@@ -195,6 +197,7 @@ export function App() {
   });
 
   // Navigation & Modal states
+  const [appStage, setAppStage] = useState<'welcome' | 'select-account' | 'main'>('welcome');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
@@ -623,8 +626,45 @@ export function App() {
     setCurrentUser(initialUsers[0]);
   };
 
+  const handleSelectAccount = (user: UserProfile, targetTab?: string) => {
+    setCurrentUser(user);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, user.id);
+    if (targetTab) {
+      setActiveTab(targetTab);
+    } else if (user.role === 'kasir') {
+      setActiveTab('pos');
+    } else {
+      setActiveTab('dashboard');
+    }
+    setAppStage('main');
+  };
+
   const lowStockCount = products.filter((p) => p.stock <= p.minStock).length;
 
+  // 1. Initial Opening View: Welcome Page (Polos / Custom Wallpaper with "Ayo Belanja" button)
+  if (appStage === 'welcome') {
+    return (
+      <WelcomeScreen
+        coopConfig={coopConfig}
+        onStartShopping={() => setAppStage('select-account')}
+      />
+    );
+  }
+
+  // 2. Account Selection View: 2 Cards (Administrator & Kasir)
+  if (appStage === 'select-account') {
+    return (
+      <AccountSelectionScreen
+        users={users}
+        coopConfig={coopConfig}
+        onSelectUser={handleSelectAccount}
+        onBackToWelcome={() => setAppStage('welcome')}
+        isCloudConnected={isCloudConnected}
+      />
+    );
+  }
+
+  // 3. Main Application Workspace (Dashboard, POS, Produk, etc.)
   return (
     <div className="flex h-screen w-full bg-slate-100 font-sans text-slate-800 overflow-hidden select-none">
       {/* Dark Sidebar Navigation */}
@@ -639,6 +679,8 @@ export function App() {
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         isCollapsed={isSidebarCollapsed}
+        onLogoutOrSwitchScreen={() => setAppStage('select-account')}
+        onReturnToWelcome={() => setAppStage('welcome')}
       />
 
       {/* Main Workspace Column */}
@@ -816,6 +858,7 @@ export function App() {
                 onSaveConfig={handleSaveConfig}
                 onRestoreAllData={handleRestoreAllData}
                 onResetToDefault={handleResetToDefault}
+                onPreviewWelcome={() => setAppStage('welcome')}
               />
             )}
           </div>

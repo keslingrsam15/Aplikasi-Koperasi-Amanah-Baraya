@@ -15,6 +15,8 @@ import {
   PiggyBank,
   Landmark,
   UserCheck,
+  LogOut,
+  Store,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +30,8 @@ interface SidebarProps {
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
   isCollapsed?: boolean;
+  onLogoutOrSwitchScreen?: () => void;
+  onReturnToWelcome?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -41,21 +45,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile = false,
   onCloseMobile,
   isCollapsed = false,
+  onLogoutOrSwitchScreen,
+  onReturnToWelcome,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isIconBouncing, setIsIconBouncing] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsIconBouncing(true);
-      const timer = setTimeout(() => {
-        setIsIconBouncing(false);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -185,8 +178,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <div
                   className={`w-5 h-5 shrink-0 transition-transform flex items-center justify-center ${
-                    isActive ? 'opacity-100 text-white' : 'opacity-85 group-hover:opacity-100'
-                  } ${isActive && isIconBouncing ? 'animate-bounce' : ''}`}
+                    isActive ? 'opacity-100 text-white animate-smooth-jump-5s' : 'opacity-85 group-hover:opacity-100'
+                  }`}
                 >
                   <Icon className="w-5 h-5 text-white stroke-[2.2]" />
                 </div>
@@ -279,6 +272,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </button>
                 ))}
               </div>
+
+              {(onLogoutOrSwitchScreen || onReturnToWelcome) && (
+                <div className="pt-2 mt-2 border-t border-slate-100 space-y-1">
+                  {onLogoutOrSwitchScreen && (
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onLogoutOrSwitchScreen();
+                      }}
+                      className="w-full p-2 rounded-lg text-left flex items-center gap-2 text-xs font-bold text-emerald-800 hover:bg-emerald-50 transition cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Ganti Akun Masuk</span>
+                    </button>
+                  )}
+                  {onReturnToWelcome && (
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onReturnToWelcome();
+                      }}
+                      className="w-full p-2 rounded-lg text-left flex items-center gap-2 text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                    >
+                      <Store className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Kembali ke Layar Welcome</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

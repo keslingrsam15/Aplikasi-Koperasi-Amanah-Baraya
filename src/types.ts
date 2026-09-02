@@ -211,6 +211,7 @@ export interface CoopConfig {
   paperWidth: '58mm' | '80mm';
   taxPercent: number;
   logoUrl?: string; // URL / Base64 logo koperasi
+  welcomeWallpaperUrl?: string; // URL / Base64 wallpaper welcome page
   printerConfig?: PrinterConfig;
   bannerSlides?: BannerSlide[];
   showBannerSlider?: boolean;

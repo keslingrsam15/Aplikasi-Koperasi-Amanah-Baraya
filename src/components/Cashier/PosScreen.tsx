@@ -438,7 +438,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
             </div>
 
             {/* Category scroll bar */}
-            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
+            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1.5 text-xs emerald-scrollbar">
               {categories.map((cat) => (
                 <button
                   key={cat}
@@ -466,7 +466,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[540px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[540px] overflow-y-auto pr-1.5 emerald-scrollbar">
                 {filteredProducts.map((prod) => {
                   const inCart = cart.find((c) => c.product.id === prod.id);
                   const isLowStock = prod.stock <= prod.minStock;
@@ -671,7 +671,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
               </div>
 
               {/* Cart Items List */}
-              <div className="max-h-[250px] overflow-y-auto space-y-2 py-2 pr-1">
+              <div className="max-h-[250px] overflow-y-auto space-y-2 py-2 pr-1.5 emerald-scrollbar">
                 {cart.length === 0 ? (
                   <div className="py-12 text-center text-slate-800 space-y-2">
                     <Barcode className="w-10 h-10 mx-auto text-slate-400 animate-pulse" />

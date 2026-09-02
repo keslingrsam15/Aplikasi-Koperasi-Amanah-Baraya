@@ -21,6 +21,65 @@ body {
   scrollbar-width: none !important; /* Firefox */
 }
 
+/* Custom Thin Emerald Scrollbar */
+.emerald-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.emerald-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+
+.emerald-scrollbar::-webkit-scrollbar-thumb {
+  background: #047857;
+  border-radius: 9999px;
+}
+
+.emerald-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #065f46;
+}
+
+.emerald-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #047857 #f1f5f9;
+}
+
+/* Smooth 5-second periodic hopping animation for active sidebar icons */
+@keyframes smoothHop5s {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  2% {
+    transform: translateY(1px) scale(1.06, 0.94);
+  }
+  5.5% {
+    transform: translateY(-6px) scale(0.95, 1.05);
+  }
+  9% {
+    transform: translateY(0) scale(1.05, 0.95);
+  }
+  12% {
+    transform: translateY(-2.5px) scale(0.98, 1.02);
+  }
+  15% {
+    transform: translateY(0) scale(1.02, 0.98);
+  }
+  17.5% {
+    transform: translateY(0) scale(1, 1);
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+}
+
+.animate-smooth-jump-5s {
+  animation: smoothHop5s 5s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+  transform-origin: bottom center;
+  will-change: transform;
+}
+
 @media print {
   @page {
     margin: 0 !important;
