@@ -1,0 +1,6 @@
+{
+  "name": "Kasir Koperasi Amanah Baraya RSUD Al-Mulk",
+  "description": "Sistem POS Kasir, Barcode Otomatis, Manajemen Stok & Laporan Koperasi Amanah Baraya RSUD Al-Mulk",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
