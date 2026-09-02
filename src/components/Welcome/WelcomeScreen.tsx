@@ -45,25 +45,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         }
       `}} />
 
-      {/* Background Image / Ambient Presentation */}
+      {/* Background Image / Presentation */}
       {hasWallpaper ? (
-        <div className="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center bg-slate-950">
-          {/* Layer 1: Ambient Blurred Background (ensures no empty borders on any aspect ratio) */}
-          <div
-            className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat scale-110 blur-2xl opacity-50 pointer-events-none"
-            style={{
-              backgroundImage: `url("${wallpaperUrl}")`,
-            }}
-          />
-
-          {/* Layer 2: Subtle gradient vignette overlay to unify the background color and depth */}
-          <div className="absolute inset-0 w-full h-full bg-gradient-to-tr from-slate-950/40 via-transparent to-slate-950/40 pointer-events-none" />
-
-          {/* Layer 3: Main sharp image that scales proportionally without cropping */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden bg-slate-950">
+          {/* Full-bleed crisp wallpaper image filling 100% of the screen on desktop, tablet, and mobile */}
           <img
             src={wallpaperUrl}
             alt="Welcome Wallpaper"
-            className="relative z-10 w-full h-full max-w-full max-h-full object-contain transition-all duration-300 pointer-events-none drop-shadow-[0_15px_40px_rgba(0,0,0,0.6)]"
+            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-all duration-300"
           />
         </div>
       ) : (
@@ -71,8 +60,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900" />
       )}
 
-      {/* "Ayo Belanja" Button - Positioned in the bottom-left corner, shifted slightly to the right, raised proportionally to bottom-24 s.d. bottom-44 */}
-      <div className="fixed left-12 bottom-24 sm:left-16 sm:bottom-32 md:left-20 md:bottom-40 lg:bottom-44 z-30">
+      {/* "Ayo Belanja" Button - Positioned in the bottom-left corner, shifted slightly to the left, raised proportionally to bottom-24 s.d. bottom-44 */}
+      <div className="fixed left-7 bottom-24 sm:left-10 sm:bottom-32 md:left-14 md:bottom-40 lg:bottom-44 z-30">
         <button
           id="btn-ayo-belanja"
           onClick={onStartShopping}
@@ -97,3 +86,4 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 };
 
 export default WelcomeScreen;
+

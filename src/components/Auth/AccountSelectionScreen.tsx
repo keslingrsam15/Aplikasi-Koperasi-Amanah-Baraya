@@ -91,29 +91,29 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
       </header>
 
       {/* Main Content Area */}
-      <main className="relative z-10 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex-1 flex flex-col justify-center">
+      <main className="relative z-10 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 flex-1 flex flex-col justify-center">
         {/* Header Heading */}
-        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100/80 text-emerald-800 text-xs font-black uppercase tracking-wider mb-3 shadow-2xs">
+        <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100/80 text-emerald-800 text-[10px] sm:text-xs font-black uppercase tracking-wider mb-3 shadow-2xs">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
             <span>Koperasi Amanah Baraya • RSUD Al-Mulk</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Pilih Akun Masuk
           </h1>
-          <p className="mt-2 text-sm sm:text-base text-slate-600 font-medium">
+          <p className="mt-2 text-sm text-slate-600 font-medium max-w-lg mx-auto">
             Silakan pilih peran akun untuk melanjutkan transaksi penjualan kasir atau akses pengelolaan sistem koperasi.
           </p>
         </div>
 
         {/* Two Modern Role Selection Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
           {/* Card 1: Akun Administrator */}
           <div
             id="card-role-admin"
             onMouseEnter={() => setHoveredCard('admin')}
             onMouseLeave={() => setHoveredCard(null)}
-            className={`group bg-white rounded-3xl border-2 transition-all duration-300 p-6 sm:p-8 flex flex-col justify-between shadow-lg hover:shadow-2xl ${
+            className={`group bg-white rounded-3xl border-2 transition-all duration-300 p-5 sm:p-6 flex flex-col justify-between shadow-lg hover:shadow-2xl ${
               hoveredCard === 'admin'
                 ? 'border-emerald-600 shadow-emerald-900/10 -translate-y-1'
                 : 'border-slate-200/90'
@@ -121,35 +121,35 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
           >
             <div>
               {/* Card Header */}
-              <div className="flex items-start justify-between gap-4 mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md shadow-emerald-900/20 group-hover:scale-105 transition-transform">
-                  <ShieldCheck className="w-7 h-7" />
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md shadow-emerald-900/20 group-hover:scale-105 transition-transform shrink-0">
+                  <ShieldCheck className="w-6 h-6" />
                 </div>
-                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold text-xs uppercase tracking-wide border border-emerald-200">
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold text-[10px] uppercase tracking-wide border border-emerald-200">
                   Akses Penuh / Master
                 </span>
               </div>
 
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 mb-2">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 mb-2">
                 Akun Administrator
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed mb-6">
+              <p className="text-xs text-slate-600 font-normal leading-relaxed mb-5">
                 Akses lengkap manajemen produk, stok & mutasi, data anggota, simpan pinjam, laporan keuangan & pengaturan sistem koperasi.
               </p>
 
               {/* User Selector for Admins */}
-              <div className="space-y-2 mb-6">
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <div className="space-y-2 mb-5">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   Pilih Petugas Administrator:
                 </label>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                   {effectiveAdmins.map((user) => {
                     const isSelected = user.id === selectedAdminId;
                     return (
                       <div
                         key={user.id}
                         onClick={() => setSelectedAdminId(user.id)}
-                        className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                           isSelected
                             ? 'bg-emerald-50/80 border-emerald-500 shadow-xs'
                             : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200/80'
@@ -157,15 +157,15 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div
-                            className={`w-9 h-9 rounded-xl ${user.avatarColor || 'bg-emerald-700'} text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0`}
+                            className={`w-8 h-8 rounded-xl ${user.avatarColor || 'bg-emerald-700'} text-white font-black text-[10px] flex items-center justify-center shadow-xs shrink-0`}
                           >
                             {user.name.slice(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                            <div className="text-xs font-bold text-slate-900 truncate">
                               {user.name}
                             </div>
-                            <div className="text-[10px] text-slate-500 truncate">
+                            <div className="text-[9px] text-slate-500 truncate">
                               {user.nipOrNik ? `NIP: ${user.nipOrNik}` : 'Petugas Pengelola'}
                             </div>
                           </div>
@@ -173,9 +173,9 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
 
                         <div className="shrink-0">
                           {isSelected ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                           ) : (
-                            <div className="w-4 h-4 rounded-full border-2 border-slate-300" />
+                            <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300" />
                           )}
                         </div>
                       </div>
@@ -189,9 +189,9 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
             <button
               id="btn-login-admin"
               onClick={() => handleChooseAdmin()}
-              className="w-full py-3.5 px-6 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-98 transition cursor-pointer"
+              className="w-full py-3 px-5 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-98 transition cursor-pointer"
             >
-              <span>Masuk sebagai Administrator</span>
+              <span>Masuk Administrator</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -201,7 +201,7 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
             id="card-role-kasir"
             onMouseEnter={() => setHoveredCard('cashier')}
             onMouseLeave={() => setHoveredCard(null)}
-            className={`group bg-white rounded-3xl border-2 transition-all duration-300 p-6 sm:p-8 flex flex-col justify-between shadow-lg hover:shadow-2xl ${
+            className={`group bg-white rounded-3xl border-2 transition-all duration-300 p-5 sm:p-6 flex flex-col justify-between shadow-lg hover:shadow-2xl ${
               hoveredCard === 'cashier'
                 ? 'border-emerald-600 shadow-emerald-900/10 -translate-y-1'
                 : 'border-slate-200/90'
@@ -209,35 +209,35 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
           >
             <div>
               {/* Card Header */}
-              <div className="flex items-start justify-between gap-4 mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 group-hover:scale-105 transition-transform">
-                  <ShoppingCart className="w-7 h-7" />
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 group-hover:scale-105 transition-transform shrink-0">
+                  <ShoppingCart className="w-6 h-6" />
                 </div>
-                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold text-xs uppercase tracking-wide border border-emerald-200">
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold text-[10px] uppercase tracking-wide border border-emerald-200">
                   Kasir POS & Transaksi
                 </span>
               </div>
 
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 mb-2">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 mb-2">
                 Akun Kasir
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed mb-6">
+              <p className="text-xs text-slate-600 font-normal leading-relaxed mb-5">
                 Layanan transaksi kasir cepat (POS), pencarian barcode barang, diskon anggota RSUD Al-Mulk, dan cetak struk thermal otomatis.
               </p>
 
               {/* User Selector for Cashiers */}
-              <div className="space-y-2 mb-6">
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <div className="space-y-2 mb-5">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   Pilih Petugas Kasir yang Bertugas:
                 </label>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                   {effectiveCashiers.map((user) => {
                     const isSelected = user.id === selectedCashierId;
                     return (
                       <div
                         key={user.id}
                         onClick={() => setSelectedCashierId(user.id)}
-                        className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                           isSelected
                             ? 'bg-emerald-50/80 border-emerald-500 shadow-xs'
                             : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200/80'
@@ -245,15 +245,15 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div
-                            className={`w-9 h-9 rounded-xl ${user.avatarColor || 'bg-emerald-600'} text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0`}
+                            className={`w-8 h-8 rounded-xl ${user.avatarColor || 'bg-emerald-600'} text-white font-black text-[10px] flex items-center justify-center shadow-xs shrink-0`}
                           >
                             {user.name.slice(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                            <div className="text-xs font-bold text-slate-900 truncate">
                               {user.name}
                             </div>
-                            <div className="text-[10px] text-slate-500 truncate">
+                            <div className="text-[9px] text-slate-500 truncate">
                               {user.shift || 'Kasir Operasional'}
                             </div>
                           </div>
@@ -261,9 +261,9 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
 
                         <div className="shrink-0">
                           {isSelected ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                           ) : (
-                            <div className="w-4 h-4 rounded-full border-2 border-slate-300" />
+                            <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300" />
                           )}
                         </div>
                       </div>
@@ -277,9 +277,9 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
             <button
               id="btn-login-cashier"
               onClick={() => handleChooseCashier()}
-              className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-98 transition cursor-pointer"
+              className="w-full py-3 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-98 transition cursor-pointer"
             >
-              <span>Masuk sebagai Kasir (Buka POS)</span>
+              <span>Masuk sebagai Kasir</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
