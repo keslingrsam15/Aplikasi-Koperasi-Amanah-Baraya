@@ -68,26 +68,28 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
         <div className="absolute -bottom-40 right-1/4 w-96 h-96 bg-emerald-50 rounded-full blur-3xl" />
       </div>
 
+      {/* CSS Animation for Back Button Arrow */}
+      <style>{`
+        @keyframes arrowBackForth {
+          0%, 100% { transform: translateX(0); }
+          50% { transform: translateX(-6px); }
+        }
+        .animate-arrow-back-forth {
+          animation: arrowBackForth 1.5s ease-in-out infinite;
+        }
+      `}</style>
+
       {/* Top Navigation Bar */}
       <header className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex items-center justify-between">
         <button
           id="btn-back-to-welcome"
           onClick={onBackToWelcome}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 shadow-xs hover:bg-slate-50 text-slate-700 hover:text-emerald-700 font-bold text-xs sm:text-sm transition active:scale-95 cursor-pointer"
+          title="Kembali ke Layar Pembuka"
+          aria-label="Kembali ke Layar Pembuka"
+          className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 hover:text-emerald-700 transition active:scale-95 cursor-pointer flex items-center justify-center group"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Kembali ke Layar Pembuka</span>
+          <ArrowLeft className="w-5 h-5 animate-arrow-back-forth text-slate-700 group-hover:text-emerald-700" />
         </button>
-
-        <div className="flex items-center gap-3">
-          {/* Supabase Status Pill */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-semibold shadow-2xs">
-            <Cloud className={`w-3.5 h-3.5 ${isCloudConnected ? 'text-emerald-600' : 'text-slate-400'}`} />
-            <span className={isCloudConnected ? 'text-emerald-800 font-bold' : 'text-slate-600'}>
-              {isCloudConnected ? 'Supabase Terhubung' : 'Lokal / Offline'}
-            </span>
-          </div>
-        </div>
       </header>
 
       {/* Main Content Area */}
@@ -108,7 +110,7 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
 
         {/* Two Modern Role Selection Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-          {/* Card 1: Akun Administrator */}
+          {/* Card 1: Akun Kepala Toko */}
           <div
             id="card-role-admin"
             onMouseEnter={() => setHoveredCard('admin')}
@@ -131,7 +133,7 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
               </div>
 
               <h2 className="text-lg sm:text-xl font-black text-slate-900 mb-2">
-                Akun Administrator
+                Akun Kepala Toko
               </h2>
               <p className="text-xs text-slate-600 font-normal leading-relaxed mb-5">
                 Akses lengkap manajemen produk, stok & mutasi, data anggota, simpan pinjam, laporan keuangan & pengaturan sistem koperasi.
@@ -140,7 +142,7 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
               {/* User Selector for Admins */}
               <div className="space-y-2 mb-5">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  Pilih Petugas Administrator:
+                  Pilih Petugas Kepala Toko:
                 </label>
                 <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                   {effectiveAdmins.map((user) => {
@@ -191,7 +193,7 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
               onClick={() => handleChooseAdmin()}
               className="w-full py-3 px-5 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-98 transition cursor-pointer"
             >
-              <span>Masuk Administrator</span>
+              <span>Masuk Kepala Toko</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -292,7 +294,7 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
           {coopConfig.name || 'KOPERASI AMANAH BARAYA'} • {coopConfig.hospitalName || 'RSUD AL-MULK KOTA SUKABUMI'}
         </p>
         <p className="text-[11px] text-slate-600 mt-0.5">
-          Sistem Informasi Kasir, Inventaris Produk & Simpan Pinjam Terintegrasi Cloud Supabase
+          Sistem Informasi Kasir, Inventaris Produk & Simpan Pinjam Terintegrasi
         </p>
       </footer>
     </div>

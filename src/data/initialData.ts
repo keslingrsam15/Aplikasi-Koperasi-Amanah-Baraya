@@ -90,7 +90,7 @@ export const initialCoopConfig: CoopConfig = {
 export const initialUsers: UserProfile[] = [
   {
     id: 'USR-ADMIN-01',
-    name: 'Administrator',
+    name: 'Kepala Toko',
     role: 'admin',
     avatarColor: 'bg-blue-600',
     nipOrNik: '',

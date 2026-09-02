@@ -274,10 +274,23 @@ export const CoopSettings: React.FC<CoopSettingsProps> = ({
   };
 
   const [isUploadingWallpaper, setIsUploadingWallpaper] = useState<boolean>(false);
+  const [newSliderUrlInput, setNewSliderUrlInput] = useState<string>('');
 
-  const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const currentSliderUrls = React.useMemo(() => {
+    if (formConfig.welcomeSliderUrls && formConfig.welcomeSliderUrls.length > 0) {
+      return formConfig.welcomeSliderUrls;
+    }
+    return formConfig.welcomeWallpaperUrl ? [formConfig.welcomeWallpaperUrl] : [];
+  }, [formConfig.welcomeSliderUrls, formConfig.welcomeWallpaperUrl]);
+
+  const handleAddSliderFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (currentSliderUrls.length >= 5) {
+      showToast('Maksimal 5 gambar slider untuk Welcome Screen.', 'error');
+      return;
+    }
 
     if (!file.type.startsWith('image/')) {
       showToast('Harap pilih file gambar (PNG, JPG, WebP)', 'error');
@@ -285,32 +298,77 @@ export const CoopSettings: React.FC<CoopSettingsProps> = ({
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      showToast('Ukuran gambar wallpaper maksimal 10MB', 'error');
+      showToast('Ukuran gambar maksimal 10MB', 'error');
       return;
     }
 
     setIsUploadingWallpaper(true);
     try {
       const url = await uploadWelcomeWallpaper(file);
-      const updatedConfig = { ...formConfig, welcomeWallpaperUrl: url };
+      const newUrls = [...currentSliderUrls, url].slice(0, 5);
+      const updatedConfig = {
+        ...formConfig,
+        welcomeSliderUrls: newUrls,
+        welcomeWallpaperUrl: newUrls[0],
+      };
       setFormConfig(updatedConfig);
       onSaveConfig(updatedConfig);
       await saveConfigToSupabase(updatedConfig);
-      showToast('Wallpaper Welcome Page berhasil diunggah & tersimpan di Supabase Cloud!', 'success');
+      showToast('Gambar slider Welcome Page berhasil ditambahkan!', 'success');
     } catch (err: any) {
-      showToast('Gagal mengunggah wallpaper: ' + (err?.message || String(err)), 'error');
+      showToast('Gagal mengunggah gambar: ' + (err?.message || String(err)), 'error');
     } finally {
       setIsUploadingWallpaper(false);
       e.target.value = '';
     }
   };
 
-  const handleRemoveWallpaper = async () => {
-    const updatedConfig = { ...formConfig, welcomeWallpaperUrl: undefined };
+  const handleAddSliderUrl = async () => {
+    if (!newSliderUrlInput.trim()) return;
+    if (currentSliderUrls.length >= 5) {
+      showToast('Maksimal 5 gambar slider untuk Welcome Screen.', 'error');
+      return;
+    }
+    const newUrls = [...currentSliderUrls, newSliderUrlInput.trim()].slice(0, 5);
+    const updatedConfig = {
+      ...formConfig,
+      welcomeSliderUrls: newUrls,
+      welcomeWallpaperUrl: newUrls[0],
+    };
     setFormConfig(updatedConfig);
     onSaveConfig(updatedConfig);
     await saveConfigToSupabase(updatedConfig);
-    showToast('Wallpaper dihapus. Halaman welcome kembali menggunakan latar polos bawaan.', 'info');
+    setNewSliderUrlInput('');
+    showToast('Tautan gambar slider berhasil ditambahkan!', 'success');
+  };
+
+  const handleRemoveSliderImage = async (index: number) => {
+    const newUrls = currentSliderUrls.filter((_, idx) => idx !== index);
+    const updatedConfig = {
+      ...formConfig,
+      welcomeSliderUrls: newUrls.length > 0 ? newUrls : undefined,
+      welcomeWallpaperUrl: newUrls.length > 0 ? newUrls[0] : undefined,
+    };
+    setFormConfig(updatedConfig);
+    onSaveConfig(updatedConfig);
+    await saveConfigToSupabase(updatedConfig);
+    showToast('Gambar slider berhasil dihapus.', 'info');
+  };
+
+  const handleWallpaperUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await handleAddSliderFile(e);
+  };
+
+  const handleRemoveWallpaper = async () => {
+    const updatedConfig = {
+      ...formConfig,
+      welcomeWallpaperUrl: undefined,
+      welcomeSliderUrls: undefined,
+    };
+    setFormConfig(updatedConfig);
+    onSaveConfig(updatedConfig);
+    await saveConfigToSupabase(updatedConfig);
+    showToast('Semua gambar slider dihapus. Welcome Page kembali menggunakan gambar bawaan.', 'info');
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -832,99 +890,136 @@ export const CoopSettings: React.FC<CoopSettingsProps> = ({
             )}
           </div>
 
-          <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-3">
+          <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-4">
             <div className="flex items-center justify-between">
-              <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span>Foto / Wallpaper Welcome Screen</span>
-              </label>
-              {formConfig.welcomeWallpaperUrl && (
+              <div>
+                <label className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 text-sm">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>Gambar Slider Welcome Screen (Maksimal 5 Gambar)</span>
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Gambar slider di Welcome Screen berganti otomatis setiap 5 detik secara bersih tanpa badge/teks yang menghalangi.
+                </p>
+              </div>
+              {currentSliderUrls.length > 0 && (
                 <button
                   type="button"
                   onClick={handleRemoveWallpaper}
-                  className="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                  className="text-xs text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 hover:underline cursor-pointer shrink-0"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  Hapus Wallpaper (Gunakan Polos)
+                  Hapus Semua Slider
                 </button>
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-5">
-              {/* Preview Box */}
-              <div className="w-40 h-24 rounded-2xl bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center p-1 shrink-0 shadow-inner overflow-hidden relative group">
-                {formConfig.welcomeWallpaperUrl ? (
-                  <img
-                    src={formConfig.welcomeWallpaperUrl}
-                    alt="Welcome Wallpaper Preview"
-                    className="w-full h-full object-cover rounded-xl"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <div className="text-center text-slate-400 p-2">
-                    <ImageIcon className="w-6 h-6 mx-auto mb-1 opacity-50 text-slate-400" />
-                    <span className="text-[10px] block leading-tight font-medium text-slate-300">
-                      Latar Polos Standar
-                    </span>
+            {/* List of active slider images */}
+            {currentSliderUrls.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+                {currentSliderUrls.map((url, index) => (
+                  <div key={index} className="relative group p-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs space-y-2">
+                    <div className="w-full h-24 rounded-lg bg-slate-900 overflow-hidden relative">
+                      <img
+                        src={url}
+                        alt={`Slide ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <span className="absolute top-1 left-1 bg-emerald-700 text-white font-black text-[9px] px-1.5 py-0.5 rounded">
+                        #{index + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSliderImage(index)}
+                        className="absolute top-1 right-1 bg-rose-600 hover:bg-rose-700 text-white p-1 rounded-md opacity-90 group-hover:opacity-100 transition cursor-pointer"
+                        title="Hapus Slide Ini"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(e) => {
+                        const newUrls = [...currentSliderUrls];
+                        newUrls[index] = e.target.value;
+                        const updated = {
+                          ...formConfig,
+                          welcomeSliderUrls: newUrls,
+                          welcomeWallpaperUrl: newUrls[0],
+                        };
+                        setFormConfig(updated);
+                        onSaveConfig(updated);
+                        saveConfigToSupabase(updated);
+                      }}
+                      className="w-full px-2 py-1 text-[10px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200"
+                      placeholder="URL Gambar..."
+                    />
                   </div>
-                )}
-                {/* Mini badge simulation on preview */}
-                <div className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-full bg-emerald-600/90 text-white text-[8px] font-black pointer-events-none">
-                  Ayo Belanja
-                </div>
+                ))}
               </div>
+            )}
 
-              {/* Upload Controls */}
-              <div className="flex-1 w-full space-y-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold cursor-pointer transition shadow-xs active:scale-95">
+            {/* Add New Slide controls (if < 5) */}
+            {currentSliderUrls.length < 5 ? (
+              <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  + Tambah Gambar Slider Baru ({currentSliderUrls.length}/5)
+                </span>
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold text-xs cursor-pointer transition shadow-xs active:scale-95 shrink-0">
                     {isUploadingWallpaper ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Mengunggah Wallpaper ke Supabase...</span>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Mengunggah...</span>
                       </>
                     ) : (
                       <>
-                        <Upload className="w-4 h-4" />
-                        <span>Unggah Wallpaper Baru</span>
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Unggah Gambar (JPG/PNG)</span>
                       </>
                     )}
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={handleWallpaperUpload}
+                      onChange={handleAddSliderFile}
                       disabled={isUploadingWallpaper}
                       className="hidden"
                     />
                   </label>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Format JPG, PNG, WebP (Rekomendasi Landscape / Resolusi HD)
-                  </span>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="url"
-                    placeholder="Atau tautan URL gambar wallpaper online (https://...)"
-                    value={formConfig.welcomeWallpaperUrl || ''}
-                    onChange={(e) => {
-                      const updated = { ...formConfig, welcomeWallpaperUrl: e.target.value || undefined };
-                      setFormConfig(updated);
-                      onSaveConfig(updated);
-                      saveConfigToSupabase(updated);
-                    }}
-                    className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-600"
-                  />
+                  <div className="flex items-center gap-2 flex-1 w-full">
+                    <input
+                      type="url"
+                      placeholder="Atau tempel URL gambar online (https://...)"
+                      value={newSliderUrlInput}
+                      onChange={(e) => setNewSliderUrlInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddSliderUrl();
+                        }
+                      }}
+                      className="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddSliderUrl}
+                      disabled={!newSliderUrlInput.trim()}
+                      className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition cursor-pointer shrink-0"
+                    >
+                      Tambah
+                    </button>
+                  </div>
                 </div>
-                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
-                  {formConfig.welcomeWallpaperUrl
-                    ? 'Wallpaper aktif akan tampil sebagai layar penuh pada Welcome Screen.'
-                    : 'Belum ada wallpaper yang diunggah. Welcome Screen akan menampilkan latar polos elegan tanpa teks/gambar.'}
-                </p>
               </div>
-            </div>
+            ) : (
+              <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                Batas maksimal 5 gambar slider sudah tercapai. Hapus salah satu gambar untuk menambahkan gambar baru.
+              </p>
+            )}
           </div>
         </div>
 

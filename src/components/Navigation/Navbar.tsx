@@ -63,7 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const getRoleLabel = (role: string): string => {
     switch (role?.toLowerCase()) {
       case 'admin':
-        return 'Administrator';
+        return 'Kepala Toko';
       case 'pengurus':
         return 'Pengurus Koperasi';
       case 'gudang':

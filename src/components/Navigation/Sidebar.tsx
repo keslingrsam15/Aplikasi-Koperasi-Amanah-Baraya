@@ -70,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const getRoleLabel = (role: string): string => {
     switch (role?.toLowerCase()) {
       case 'admin':
-        return 'Administrator';
+        return 'Kepala Toko';
       case 'pengurus':
         return 'Pengurus Koperasi';
       case 'gudang':

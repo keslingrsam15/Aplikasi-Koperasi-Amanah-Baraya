@@ -212,6 +212,7 @@ export interface CoopConfig {
   taxPercent: number;
   logoUrl?: string; // URL / Base64 logo koperasi
   welcomeWallpaperUrl?: string; // URL / Base64 wallpaper welcome page
+  welcomeSliderUrls?: string[]; // Daftar URL gambar slider Welcome Page (Maksimal 5)
   printerConfig?: PrinterConfig;
   bannerSlides?: BannerSlide[];
   showBannerSlider?: boolean;

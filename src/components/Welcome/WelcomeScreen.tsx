@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CoopConfig } from '../../types';
-import { ArrowRight, Clock, Calendar } from 'lucide-react';
+import { ArrowRight, Clock, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import defaultStorefrontImg from '../../assets/images/koperasi_storefront_1788350379104.jpg';
 
 interface WelcomeScreenProps {
@@ -12,8 +12,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   coopConfig,
   onStartShopping,
 }) => {
-  const wallpaperUrl = coopConfig.welcomeWallpaperUrl || defaultStorefrontImg;
-
   // Real-time clock and date state
   const [now, setNow] = useState(new Date());
 
@@ -36,6 +34,63 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     minute: '2-digit',
     second: '2-digit',
   });
+
+  // Welcome Screen Image Slider (up to 5 images, defaults to wallpaperUrl or default image)
+  const sliderImages = React.useMemo(() => {
+    if (coopConfig.welcomeSliderUrls && coopConfig.welcomeSliderUrls.length > 0) {
+      return coopConfig.welcomeSliderUrls.filter((url) => Boolean(url && url.trim())).slice(0, 5);
+    }
+    if (coopConfig.welcomeWallpaperUrl) {
+      return [coopConfig.welcomeWallpaperUrl];
+    }
+    return [defaultStorefrontImg];
+  }, [coopConfig.welcomeSliderUrls, coopConfig.welcomeWallpaperUrl]);
+
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  // Auto-play slider every 5 seconds (5000ms), paused on hover
+  useEffect(() => {
+    if (sliderImages.length <= 1 || isHovered) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [sliderImages.length, isHovered]);
+
+  // Adjust current slide if images list shrinks
+  useEffect(() => {
+    if (currentSlide >= sliderImages.length) {
+      setCurrentSlide(0);
+    }
+  }, [sliderImages.length, currentSlide]);
+
+  const handlePrevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + sliderImages.length) % sliderImages.length);
+  };
+
+  const handleNextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const deltaX = touchStartX - touchEndX;
+    if (Math.abs(deltaX) > 40) {
+      if (deltaX > 0) {
+        handleNextSlide();
+      } else {
+        handlePrevSlide();
+      }
+    }
+    setTouchStartX(null);
+  };
 
   return (
     <div
@@ -80,8 +135,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
       {/* Background Decorative Shapes */}
       <div className="absolute top-0 right-0 w-1/2 h-full max-w-3xl bg-gradient-to-bl from-[#D5EFE0]/60 via-[#DDF3E6]/30 to-transparent rounded-bl-[140px] pointer-events-none -z-0" />
+      <div className="absolute top-0 left-0 w-1/2 h-full max-w-3xl bg-gradient-to-br from-[#D5EFE0]/60 via-[#DDF3E6]/30 to-transparent rounded-br-[140px] pointer-events-none -z-0" />
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#DFF3E8]/50 rounded-full blur-3xl pointer-events-none -z-0" />
-      <div className="absolute -top-20 -left-20 w-80 h-80 bg-emerald-200/30 rounded-full blur-3xl pointer-events-none -z-0" />
       
       {/* Dot Pattern Graphic on Bottom-Left */}
       <div className="absolute bottom-6 left-8 hidden lg:grid grid-cols-8 gap-2.5 opacity-20 pointer-events-none -z-0">
@@ -142,10 +197,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {/* Main Headline */}
             <div className="space-y-1">
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight leading-[1.12]">
-                <span className="text-[#075B3A] block">Koperasi</span>
+                <span className="text-emerald-700 block">Koperasi</span>
                 <span className="text-[#E96A1A] block">Amanah Baraya</span>
               </h1>
-              <p className="text-sm font-bold text-[#0B7A4B] tracking-widest uppercase pt-1">
+              <p className="text-sm font-bold text-emerald-800 tracking-widest uppercase pt-1">
                 RSUD AL-MULK • KOTA SUKABUMI
               </p>
             </div>
@@ -169,7 +224,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 id="btn-masuk-aplikasi"
                 data-testid="btn-ayo-belanja"
                 onClick={onStartShopping}
-                className="animate-float-button group relative inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-[#075B3A] hover:bg-[#0B7A4B] text-white font-bold text-base sm:text-lg tracking-wide shadow-lg shadow-[#075B3A]/25 hover:shadow-xl hover:shadow-[#075B3A]/35 active:scale-98 transition-all duration-300 cursor-pointer overflow-hidden"
+                className="animate-float-button group relative inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-base sm:text-lg tracking-wide shadow-lg shadow-emerald-700/25 hover:shadow-xl hover:shadow-emerald-700/35 active:scale-98 transition-all duration-300 cursor-pointer overflow-hidden"
               >
                 {/* Subtle Hover Glow */}
                 <span className="absolute inset-0 w-full h-full bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -180,31 +235,166 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: STOREFRONT IMAGE (CLEAN WITHOUT OBSTRUCTING BADGES) */}
-          <div className="lg:col-span-6 relative flex justify-center lg:justify-end items-center animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            
-            {/* Background Decorative Shape behind Image */}
-            <div className="absolute -inset-2 sm:-inset-4 bg-[#DFF3E8]/80 rounded-[36px] -z-10 transform rotate-1 scale-[0.98] transition-transform" />
+          {/* RIGHT COLUMN: STOREFRONT IMAGE SLIDER (SMOOTH STACKED CARDS DECK) */}
+          <div
+            className="lg:col-span-6 relative flex justify-center lg:justify-end items-center animate-fade-in"
+            style={{ animationDelay: '0.2s' }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Background Decorative Soft Blur Glow */}
+            <div className="absolute -inset-4 bg-gradient-to-tr from-emerald-200/40 via-teal-100/30 to-amber-100/30 rounded-[40px] blur-xl -z-20 pointer-events-none" />
 
-            {/* Storefront Image Frame - CLEAN & UNOBSTRUCTED */}
-            <div className="relative w-full max-w-lg lg:max-w-none rounded-3xl overflow-hidden shadow-2xl shadow-emerald-950/15 border border-emerald-100/90 bg-white group">
+            {/* Stacked Cards Container Stage - Enlarged slightly for better prominence */}
+            <div className="relative w-full max-w-[460px] sm:max-w-[520px] md:max-w-[560px] lg:max-w-[590px] h-[285px] sm:h-[330px] md:h-[365px] lg:h-[395px] select-none">
               
-              {/* Main Store Image */}
-              <img
-                src={wallpaperUrl}
-                alt="Storefront Koperasi Amanah Baraya RSUD Al-Mulk"
-                className="w-full h-auto max-h-[52vh] sm:max-h-[58vh] object-cover object-center group-hover:scale-102 transition-transform duration-700"
-              />
+              {/* Stacked Cards Render */}
+              {sliderImages.length === 1 ? (
+                // Single Image with 2 Decorative Layered Backdrops for 3D Depth
+                <>
+                  {/* Layer 3 - Back */}
+                  <div className="absolute inset-0 w-full h-full rounded-3xl bg-emerald-800/10 border-2 border-white/60 shadow-md transform scale-[0.88] translate-x-8 -translate-y-5 rotate-4 pointer-events-none z-10 transition-transform" />
+                  
+                  {/* Layer 2 - Middle */}
+                  <div className="absolute inset-0 w-full h-full rounded-3xl bg-emerald-700/20 border-2 border-white/80 shadow-lg transform scale-[0.94] translate-x-4 -translate-y-2.5 rotate-2 pointer-events-none z-20 transition-transform" />
+                  
+                  {/* Layer 1 - Front Active Card */}
+                  <div className="absolute inset-0 w-full h-full rounded-3xl overflow-hidden border-2 border-white bg-slate-900 shadow-2xl shadow-emerald-950/20 z-30 transition-transform duration-500">
+                    <img
+                      src={sliderImages[0]}
+                      alt="Storefront Koperasi Amanah Baraya"
+                      className="w-full h-full object-cover object-center"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = defaultStorefrontImg;
+                      }}
+                    />
+                  </div>
+                </>
+              ) : (
+                // Multiple Images: Dynamic 3D Stacked Cards Deck with Smooth Transitions
+                sliderImages.map((imgUrl, idx) => {
+                  const offset = (idx - currentSlide + sliderImages.length) % sliderImages.length;
+                  const isFront = offset === 0;
+                  const isSecond = offset === 1;
+                  const isThird = offset === 2;
+                  const isExiting = offset === sliderImages.length - 1;
+
+                  // Compute dynamic 3D transform, z-index, and opacity for stacked layers
+                  let cardTransform = 'scale(0.8) translate3d(60px, -30px, 0) rotate(7deg)';
+                  let cardZIndex = 0;
+                  let cardOpacity = 0;
+                  let isClickable = false;
+
+                  if (isFront) {
+                    cardTransform = 'scale(1) translate3d(0, 0, 0) rotate(0deg)';
+                    cardZIndex = 30;
+                    cardOpacity = 1;
+                    isClickable = false;
+                  } else if (isSecond) {
+                    cardTransform = 'scale(0.93) translate3d(24px, -12px, 0) rotate(3deg)';
+                    cardZIndex = 20;
+                    cardOpacity = 0.88;
+                    isClickable = true;
+                  } else if (isThird) {
+                    cardTransform = 'scale(0.86) translate3d(46px, -22px, 0) rotate(6deg)';
+                    cardZIndex = 10;
+                    cardOpacity = 0.65;
+                    isClickable = true;
+                  } else if (isExiting) {
+                    cardTransform = 'scale(0.85) translate3d(-36px, 12px, 0) rotate(-4deg)';
+                    cardZIndex = 5;
+                    cardOpacity = 0;
+                    isClickable = false;
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        if (isClickable) setCurrentSlide(idx);
+                      }}
+                      style={{
+                        transform: cardTransform,
+                        zIndex: cardZIndex,
+                        opacity: cardOpacity,
+                        transition: 'transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.7s ease',
+                        filter: isFront ? 'brightness(1)' : isSecond ? 'brightness(0.95)' : 'brightness(0.9)',
+                      }}
+                      className={`absolute inset-0 w-full h-full rounded-3xl overflow-hidden border-2 border-white/95 bg-slate-900 group shadow-xl ${
+                        isFront
+                          ? 'shadow-2xl shadow-emerald-950/20 cursor-default'
+                          : isClickable
+                          ? 'cursor-pointer hover:border-emerald-300'
+                          : 'pointer-events-none'
+                      }`}
+                    >
+                      <img
+                        src={imgUrl}
+                        alt={`Storefront Koperasi Amanah Baraya ${idx + 1}`}
+                        className="w-full h-full object-cover object-center"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = defaultStorefrontImg;
+                        }}
+                      />
+
+                      {/* Gentle bottom shade only on front card for indicator contrast */}
+                      {isFront && (
+                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+                      )}
+                    </div>
+                  );
+                })
+              )}
+
+              {/* Slider Navigation Controls (Dots & Arrows) when multiple images exist */}
+              {sliderImages.length > 1 && (
+                <>
+                  {/* Arrow Controls on Hover */}
+                  <button
+                    type="button"
+                    onClick={handlePrevSlide}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 z-40 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer shadow-lg border border-white/20"
+                    aria-label="Previous Slide"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSlide}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 z-40 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer shadow-lg border border-white/20"
+                    aria-label="Next Slide"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+
+                  {/* Clean Minimalist Indicator Dots */}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur-md border border-white/20 shadow-md">
+                    {sliderImages.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setCurrentSlide(idx)}
+                        className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                          idx === currentSlide
+                            ? 'w-6 bg-emerald-400 shadow-xs'
+                            : 'w-2 bg-white/50 hover:bg-white/90'
+                        }`}
+                        aria-label={`Slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
 
             </div>
           </div>
 
         </main>
 
-        {/* FOOTER */}
-        <footer className="w-full text-center py-2 text-xs text-slate-500 font-medium animate-fade-in shrink-0" style={{ animationDelay: '0.3s' }}>
-          <p>© 2026 Koperasi Amanah Baraya • RSUD Al-Mulk Kota Sukabumi</p>
-        </footer>
+        {/* FOOTER - CLEAN WITHOUT TEXT */}
+        <footer className="w-full text-center py-1 text-xs animate-fade-in shrink-0" style={{ animationDelay: '0.3s' }} />
 
       </div>
     </div>

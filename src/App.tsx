@@ -576,7 +576,7 @@ export function App() {
       if (remaining.length === 0) {
         const fallback: UserProfile = {
           id: `USR-${Date.now()}`,
-          name: 'Administrator',
+          name: 'Kepala Toko',
           role: 'admin',
           avatarColor: 'bg-blue-600',
           nipOrNik: '',

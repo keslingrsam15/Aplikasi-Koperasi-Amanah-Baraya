@@ -415,10 +415,10 @@ export const PosScreen: React.FC<PosScreenProps> = ({
         </div>
       )}
 
-      {/* Main Split: Left Product Catalog + Right Cart Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Side: Visual Catalog & Quick Selection */}
-        <div className="lg:col-span-7 space-y-4">
+      {/* Main Stack: Top Product Catalog (Full Width) + Bottom Cart Section (Full Width) */}
+      <div className="flex flex-col gap-6">
+        {/* Top Section: Visual Catalog & Quick Selection */}
+        <div className="w-full space-y-4">
           <div className="bg-white p-5 rounded-2xl border-2 border-slate-300 shadow-md space-y-3">
             {/* Search and Category Pills */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -454,7 +454,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
               ))}
             </div>
 
-            {/* Product Cards Grid */}
+            {/* Product Cards Grid - 3 Columns with Luxury Soft Green Gradient Cards */}
             {filteredProducts.length === 0 ? (
               <div className="py-16 text-center text-slate-600 space-y-2 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
                 <Package className="w-12 h-12 mx-auto text-slate-400 stroke-1" />
@@ -466,7 +466,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[540px] overflow-y-auto pr-1.5 emerald-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4.5 max-h-[720px] overflow-y-auto p-1 emerald-scrollbar">
                 {filteredProducts.map((prod) => {
                   const inCart = cart.find((c) => c.product.id === prod.id);
                   const isLowStock = prod.stock <= prod.minStock;
@@ -477,17 +477,17 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                       key={prod.id}
                       id={`pos-product-card-${prod.code}`}
                       onClick={() => !isOutOfStock && handleAddToCart(prod, 1)}
-                      className={`relative p-3 rounded-2xl transition-all duration-200 flex flex-col justify-between cursor-pointer group border ${
+                      className={`relative p-4 rounded-2xl transition-all duration-300 flex flex-col justify-between cursor-pointer group border shadow-xs hover:shadow-xl ${
                         isOutOfStock
-                          ? 'opacity-60 bg-slate-50 border-slate-200 cursor-not-allowed'
+                          ? 'opacity-60 bg-slate-100 border-slate-200 cursor-not-allowed'
                           : inCart
-                          ? 'bg-emerald-50/50 border-emerald-500/80 shadow-md ring-1 ring-emerald-500/30'
-                          : 'bg-white border-slate-200/90 hover:border-emerald-500/60 hover:shadow-xl'
+                          ? 'bg-gradient-to-br from-[#D5EFE0] via-[#DDF3E6] to-emerald-100/90 border-emerald-600 shadow-md ring-2 ring-emerald-500/40'
+                          : 'bg-gradient-to-br from-[#D5EFE0]/60 via-[#E8F7EE]/40 to-white border-emerald-200/90 hover:border-emerald-500/80 hover:from-[#D5EFE0]/90 hover:to-emerald-50/80'
                       }`}
                     >
                       <div>
-                        {/* Premium Cafe-style Product Image Box */}
-                        <div className="relative w-full h-36 sm:h-44 mb-3 rounded-xl overflow-hidden bg-gradient-to-b from-slate-50 via-slate-100/40 to-slate-100/70 border border-slate-200/60 flex items-center justify-center p-2 group-hover:bg-slate-100/80 transition-colors shadow-inner">
+                        {/* Premium Product Image Box */}
+                        <div className="relative w-full h-40 sm:h-44 mb-3 rounded-xl overflow-hidden bg-white/90 border border-emerald-100/90 flex items-center justify-center p-3 group-hover:bg-white transition-colors shadow-inner">
                           {prod.imageUrl ? (
                             <img
                               src={prod.imageUrl}
@@ -498,44 +498,51 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                               }}
                             />
                           ) : (
-                            <div className="flex flex-col items-center justify-center text-slate-400 gap-1">
-                              <ImageIcon className="w-10 h-10 stroke-1" />
+                            <div className="flex flex-col items-center justify-center text-slate-400 gap-1.5">
+                              <ImageIcon className="w-10 h-10 stroke-1 text-slate-300" />
                               <span className="text-[10px] font-bold text-slate-400">Tidak Ada Foto</span>
                             </div>
                           )}
 
                           {/* Top Right Floating Stock Badge */}
                           <span
-                            className={`absolute top-2 right-2 text-[10px] font-black px-2.5 py-0.5 rounded-full border shadow-xs backdrop-blur-md ${
+                            className={`absolute top-2.5 right-2.5 text-[11px] font-black px-2.5 py-1 rounded-full border shadow-xs backdrop-blur-md ${
                               isOutOfStock
                                 ? 'bg-rose-100/95 text-rose-950 border-rose-300'
                                 : isLowStock
                                 ? 'bg-amber-100/95 text-amber-950 border-amber-300'
-                                : 'bg-emerald-100/95 text-emerald-950 border-emerald-300'
+                                : 'bg-emerald-800 text-white border-emerald-900 shadow-sm'
                             }`}
                           >
-                            {isOutOfStock ? 'Habis' : `Stok: ${prod.stock}`}
+                            {isOutOfStock ? 'Habis' : `Stok: ${prod.stock} ${prod.unit || ''}`}
                           </span>
                         </div>
 
-                        {/* Product Header: Name on Left, Price on Right (Aligned) */}
-                        <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1">
-                          <h4 className="font-bold text-[11px] sm:text-xs md:text-sm text-slate-900 leading-snug line-clamp-2 flex-1 min-w-0 break-words group-hover:text-emerald-800 transition-colors">
+                        {/* Product Header: Full Name & Price (No Text Truncation) */}
+                        <div className="space-y-1 mb-2">
+                          <h4 className="font-extrabold text-sm sm:text-base text-slate-900 leading-snug break-words group-hover:text-emerald-900 transition-colors">
                             {prod.name}
                           </h4>
-                          <span className="font-black text-[11px] sm:text-xs md:text-sm text-emerald-700 shrink-0 text-right tracking-tight">
-                            {formatRupiah(prod.sellPrice)}
-                          </span>
+                          <div className="flex items-center justify-between gap-2 pt-0.5">
+                            <span className="font-black text-sm sm:text-base text-emerald-800 tracking-tight">
+                              {formatRupiah(prod.sellPrice)}
+                            </span>
+                            <span className="text-[11px] font-semibold text-slate-500 bg-white/80 px-2 py-0.5 rounded-md border border-slate-200/80">
+                              {prod.code}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Category & Unit */}
-                        <p className="text-[10px] sm:text-xs font-medium text-slate-500 truncate">
-                          {prod.category} &bull; {prod.unit}
+                        <p className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                          <span className="truncate">{prod.category}</span>
+                          <span>&bull;</span>
+                          <span>{prod.unit}</span>
                         </p>
                       </div>
 
-                      {/* Centered Rounded "Beli" Button */}
-                      <div className="mt-3 pt-2.5 border-t border-slate-100">
+                      {/* Luxury "Tambah ke Keranjang" Button */}
+                      <div className="mt-3.5 pt-3 border-t border-emerald-200/60">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -543,16 +550,16 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                             if (!isOutOfStock) handleAddToCart(prod, 1);
                           }}
                           disabled={isOutOfStock}
-                          className={`w-full py-2 px-3 rounded-full font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all duration-200 shadow-xs cursor-pointer ${
+                          className={`w-full py-2 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all duration-200 shadow-sm cursor-pointer ${
                             isOutOfStock
                               ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
-                              : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/20 active:scale-95 border border-emerald-600'
+                              : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/20 active:scale-98 border border-emerald-600'
                           }`}
                         >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Beli</span>
+                          <ShoppingBag className="w-4 h-4" />
+                          <span>{inCart ? 'Tambah Lagi' : 'Beli Barang'}</span>
                           {inCart && (
-                            <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black">
+                            <span className="ml-1 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-xs font-black shadow-xs">
                               {inCart.quantity}
                             </span>
                           )}
@@ -566,9 +573,9 @@ export const PosScreen: React.FC<PosScreenProps> = ({
           </div>
         </div>
 
-        {/* Right Side: Active Cart & Checkout Panel */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white p-5 rounded-2xl border-2 border-slate-300 shadow-md flex flex-col justify-between min-h-[580px]">
+        {/* Bottom Section: Active Cart & Checkout Panel (Full Width) */}
+        <div className="w-full space-y-4">
+          <div className="bg-white p-5 rounded-2xl border-2 border-slate-300 shadow-md flex flex-col justify-between space-y-4">
             {/* Cart Header */}
             <div>
               <div className="flex items-center justify-between pb-3 border-b-2 border-slate-200">

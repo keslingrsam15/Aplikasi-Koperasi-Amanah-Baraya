@@ -42,7 +42,7 @@ const AVAILABLE_PERMISSIONS: PermissionOption[] = [
   { id: 'reports', label: 'Laporan Keuangan', desc: 'Lihat rekap omset penjualan, estimasi laba kotor, dan riwayat kasir' },
   { id: 'users', label: 'Kelola Pengguna', desc: 'Akses menu data pengguna dan pengaturan hak akses peran' },
   { id: 'settings', label: 'Pengaturan Sistem', desc: 'Atur identitas koperasi, printer thermal, dan sinkronisasi cloud Supabase' },
-  { id: 'delete_users', label: 'Otoritas Hapus Akun', desc: 'Hak khusus Administrator untuk menghapus akun pengguna' },
+  { id: 'delete_users', label: 'Otoritas Hapus Akun', desc: 'Hak khusus Kepala Toko untuk menghapus akun pengguna' },
 ];
 
 const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -167,10 +167,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   };
 
   const handleResetUsers = () => {
-    if (window.confirm('Reset data pengguna ke akun Administrator standar (menghapus akun dummy/lama)?')) {
+    if (window.confirm('Reset data pengguna ke akun Kepala Toko standar (menghapus akun dummy/lama)?')) {
       const cleanAdmin: UserProfile = {
         id: 'USR-ADMIN-01',
-        name: 'Administrator',
+        name: 'Kepala Toko',
         role: 'admin',
         avatarColor: 'bg-blue-600',
         nipOrNik: '',
@@ -196,7 +196,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             <span>Manajemen Data Pengguna & Hak Akses</span>
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Kelola akun petugas kasir, pengelola stok, pengurus, dan administrator Koperasi Amanah Baraya
+            Kelola akun petugas kasir, pengelola stok, pengurus, dan Kepala Toko Koperasi Amanah Baraya
           </p>
         </div>
 
@@ -216,7 +216,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         <div className="p-4 bg-blue-50 rounded-2xl border border-blue-200 space-y-2">
           <div className="flex items-center space-x-2 text-blue-900 font-bold text-xs">
             <Shield className="w-4 h-4 text-blue-600" />
-            <span>Administrator</span>
+            <span>Kepala Toko</span>
           </div>
           <p className="text-[11px] text-slate-600 leading-relaxed">
             Akses penuh sistem, kelola produk, stok, laporan, tambah/edit/hapus pengguna, dan pengaturan Supabase.
@@ -266,7 +266,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               </span>
             ) : (
               <span className="text-amber-700 font-semibold">
-                Fitur hapus pengguna hanya dapat dijalankan oleh role Administrator.
+                Fitur hapus pengguna hanya dapat dijalankan oleh role Kepala Toko.
               </span>
             )}
           </span>
@@ -461,7 +461,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs sm:text-sm font-medium focus:border-emerald-600 focus:bg-white outline-none"
                   >
                     <option value="kasir">Kasir (Transaksi & Struk)</option>
-                    <option value="admin">Administrator (Akses Penuh)</option>
+                    <option value="admin">Kepala Toko (Akses Penuh)</option>
                     <option value="gudang">Petugas Gudang / Stok</option>
                     <option value="pengurus">Pengurus / Auditor</option>
                   </select>
@@ -608,7 +608,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 <strong className="text-slate-900">"{userToDelete.name}"</strong> ({userToDelete.role.toUpperCase()})?
               </p>
               <p className="text-[11px] text-rose-600 font-semibold mt-2">
-                Tindakan ini hanya dapat dilakukan oleh role Administrator dan akan menghapus akun dari sistem.
+                Tindakan ini hanya dapat dilakukan oleh role Kepala Toko dan akan menghapus akun dari sistem.
               </p>
             </div>
 
