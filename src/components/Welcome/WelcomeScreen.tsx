@@ -196,25 +196,29 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             
             {/* Main Headline */}
             <div className="space-y-1">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight leading-[1.12]">
-                <span className="text-emerald-700 block">Koperasi</span>
-                <span className="text-[#E96A1A] block">Amanah Baraya</span>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[65px] font-extrabold tracking-tight leading-[1.08]">
+                <span className="text-emerald-700 block text-[65px] leading-[1.08]">Koperasi</span>
+                <span className="text-[#E96A1A] block text-[65px] leading-[1.08]">Amanah Baraya</span>
               </h1>
-              <p className="text-sm font-bold text-emerald-800 tracking-widest uppercase pt-1">
+              <p className="text-[20px] font-bold text-emerald-800 tracking-widest uppercase pt-0 mt-0 mb-0">
                 RSUD AL-MULK • KOTA SUKABUMI
               </p>
             </div>
 
-            {/* Tagline with Tapered Gold Accent Bar */}
-            <div className="inline-flex flex-col space-y-2 pt-1 max-w-full">
-              <div className="h-[3px] w-full bg-gradient-to-r from-transparent via-amber-600/40 via-amber-400 via-yellow-200 via-amber-400 via-amber-600/40 to-transparent rounded-full shadow-2xs opacity-95" />
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[#18352A] tracking-tight">
+            {/* Tapered Gold Accent Bar (Positioned in the middle, no dark shadow) */}
+            <div className="w-[394px] max-w-full py-1">
+              <div className="h-[3px] w-full bg-gradient-to-r from-transparent via-amber-500 via-amber-400 via-yellow-200 via-amber-400 via-amber-500 to-transparent rounded-full" />
+            </div>
+
+            {/* Tagline */}
+            <div>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold not-italic text-[#18352A] tracking-tight">
                 Belanja Hemat, Kualitas Terjamin
               </h2>
             </div>
 
             {/* Description Paragraf */}
-            <p className="text-sm sm:text-base text-slate-600 font-normal leading-relaxed max-w-lg">
+            <p className="text-[13px] text-slate-600 font-normal leading-relaxed max-w-lg">
               Koperasi untuk kita, oleh kita, dan bersama kita. Melayani dengan amanah, memberikan yang terbaik untuk keluarga besar RSUD Al-Mulk.
             </p>
 
