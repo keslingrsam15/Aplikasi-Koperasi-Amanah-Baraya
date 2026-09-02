@@ -196,9 +196,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             
             {/* Main Headline */}
             <div className="space-y-1">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[62px] font-extrabold tracking-tight leading-[1.08]">
-                <span className="text-emerald-700 block text-[62px] leading-[1.08]">Koperasi</span>
-                <span className="text-[#E96A1A] block text-[62px] leading-[1.08]">Amanah Baraya</span>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[60px] font-extrabold tracking-tight leading-[1.08]">
+                <span className="text-emerald-700 block text-[60px] leading-[1.08]">Koperasi</span>
+                <span className="text-[#E96A1A] block text-[60px] leading-[1.08]">Amanah Baraya</span>
               </h1>
               <p className="text-[20px] font-bold text-emerald-800 tracking-widest uppercase pt-0 mt-0 mb-0">
                 RSUD AL-MULK • KOTA SUKABUMI
