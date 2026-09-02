@@ -47,12 +47,23 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
       {/* Background Image / Ambient Presentation */}
       {hasWallpaper ? (
-        <div className="absolute inset-0 w-full h-full overflow-hidden">
-          {/* Unified Full Screen Background Wallpaper (No cropping of central subject, fills the whole screen proportionally) */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center bg-slate-950">
+          {/* Layer 1: Ambient Blurred Background (ensures no empty borders on any aspect ratio) */}
+          <div
+            className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat scale-110 blur-2xl opacity-50 pointer-events-none"
+            style={{
+              backgroundImage: `url("${wallpaperUrl}")`,
+            }}
+          />
+
+          {/* Layer 2: Subtle gradient vignette overlay to unify the background color and depth */}
+          <div className="absolute inset-0 w-full h-full bg-gradient-to-tr from-slate-950/40 via-transparent to-slate-950/40 pointer-events-none" />
+
+          {/* Layer 3: Main sharp image that scales proportionally without cropping */}
           <img
             src={wallpaperUrl}
             alt="Welcome Wallpaper"
-            className="absolute inset-0 w-full h-full object-cover object-center transition-all duration-300 pointer-events-none"
+            className="relative z-10 w-full h-full max-w-full max-h-full object-contain transition-all duration-300 pointer-events-none drop-shadow-[0_15px_40px_rgba(0,0,0,0.6)]"
           />
         </div>
       ) : (
