@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, CoopConfig } from '../../types';
-import {
-  Menu,
-  Clock,
-  Calendar,
-} from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 interface TopHeaderProps {
   activeTab: string;
@@ -40,9 +36,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
   const formattedDate = currentDateTime.toLocaleDateString('id-ID', {
     weekday: 'long',
-    year: 'numeric',
-    month: 'short',
     day: 'numeric',
+    month: 'short',
+    year: 'numeric',
   });
 
   const formattedTime = currentDateTime.toLocaleTimeString('id-ID');
@@ -68,19 +64,21 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-        {/* Live Date & Time Display Widget */}
-        <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-xl shadow-2xs">
-          <div className="w-8 h-8 rounded-lg bg-emerald-100/80 text-emerald-700 flex items-center justify-center shrink-0">
-            <Clock className="w-4 h-4 text-emerald-700" />
+        {/* Live Date & Time Display Widget - Elegant & Premium (No Icons) */}
+        <div className="flex items-center gap-2.5 sm:gap-3 bg-slate-50/90 hover:bg-white border border-slate-200 px-3.5 py-1.5 rounded-xl shadow-2xs transition-colors select-none">
+          <div className="text-right sm:text-left">
+            <span className="text-[11px] sm:text-xs font-semibold text-slate-600 tracking-tight capitalize select-text">
+              {formattedDate}
+            </span>
           </div>
-          <div className="text-right">
-            <div className="text-[11px] text-slate-500 font-medium flex items-center justify-end gap-1">
-              <Calendar className="w-3 h-3 text-slate-400" />
-              <span>{formattedDate}</span>
-            </div>
-            <div className="text-xs font-black text-slate-800 font-mono tracking-tight">
-              {formattedTime} WIB
-            </div>
+          <div className="h-3.5 w-[1px] bg-slate-300" />
+          <div className="flex items-baseline gap-1 font-mono select-text">
+            <span className="text-xs sm:text-sm font-extrabold text-emerald-950 tracking-tight tabular-nums">
+              {formattedTime}
+            </span>
+            <span className="text-[10px] font-bold text-amber-600 tracking-wider">
+              WIB
+            </span>
           </div>
         </div>
       </div>

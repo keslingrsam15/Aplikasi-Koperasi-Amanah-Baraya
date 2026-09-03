@@ -56,7 +56,7 @@ import { QuickProductLookupModal } from './components/Scanner/QuickProductLookup
 import { ReceiptModal } from './components/Cashier/ReceiptModal';
 import { WelcomeScreen } from './components/Welcome/WelcomeScreen';
 import { AccountSelectionScreen } from './components/Auth/AccountSelectionScreen';
-import { ShoppingCart, PackagePlus } from 'lucide-react';
+import { ShoppingCart, PackagePlus, UserPlus } from 'lucide-react';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'koperasi_rsud_products_v3',
@@ -204,6 +204,7 @@ export function App() {
   const [isQuickLookupOpen, setIsQuickLookupOpen] = useState<boolean>(false);
   const [viewingReceiptTrx, setViewingReceiptTrx] = useState<Transaction | null>(null);
   const [addProductSignal, setAddProductSignal] = useState<number>(0);
+  const [addMemberSignal, setAddMemberSignal] = useState<number>(0);
 
   // Deep linking for Simpan Pinjam tab
   const [simpanPinjamInitialTab, setSimpanPinjamInitialTab] = useState<'savings' | 'loans'>('savings');
@@ -721,6 +722,15 @@ export function App() {
                   <PackagePlus className="w-4 h-4" />
                   <span>Tambah Barang</span>
                 </button>
+              ) : activeTab === 'members' ? (
+                <button
+                  id="btn-header-add-member"
+                  onClick={() => setAddMemberSignal((prev) => prev + 1)}
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl shadow-sm text-xs sm:text-sm font-bold flex items-center gap-2 transition active:scale-95 self-start sm:self-auto cursor-pointer shrink-0"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Tambah Anggota</span>
+                </button>
               ) : activeTab !== 'pos' ? (
                 <button
                   onClick={() => setActiveTab('pos')}
@@ -798,6 +808,7 @@ export function App() {
                 onNavigateToSavings={handleNavigateToSavings}
                 onNavigateToLoanApply={handleNavigateToLoanApply}
                 onNavigateToPayInstallment={handleNavigateToPayInstallment}
+                triggerAddSignal={addMemberSignal}
               />
             )}
 

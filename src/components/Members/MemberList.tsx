@@ -25,26 +25,45 @@ import {
 interface MemberListProps {
   members: Member[];
   savingsRecords: SavingsRecord[];
-  loanRecords: LoanRecord[];
+  loanRecords?: LoanRecord[];
+  loans?: LoanRecord[];
   transactions: Transaction[];
-  onSaveMember: (member: Member) => void;
+  onSaveMember?: (member: Member) => void;
+  onAddMember?: (member: Member) => void;
+  onUpdateMember?: (member: Member) => void;
   onDeleteMember: (memberId: string) => void;
   onOpenNewSavings?: (member: Member, type: 'setor' | 'tarik') => void;
   onOpenNewLoan?: (member: Member) => void;
   onOpenPayInstallment?: (loan: LoanRecord) => void;
+  onNavigateToSavings?: (member: Member, action: 'setor' | 'tarik') => void;
+  onNavigateToLoanApply?: (member: Member) => void;
+  onNavigateToPayInstallment?: (loan: LoanRecord) => void;
+  triggerAddSignal?: number;
 }
 
 export const MemberList: React.FC<MemberListProps> = ({
   members,
   savingsRecords,
   loanRecords,
+  loans,
   transactions,
   onSaveMember,
+  onAddMember,
+  onUpdateMember,
   onDeleteMember,
   onOpenNewSavings,
   onOpenNewLoan,
   onOpenPayInstallment,
+  onNavigateToSavings,
+  onNavigateToLoanApply,
+  onNavigateToPayInstallment,
+  triggerAddSignal,
 }) => {
+  const effectiveLoans = loanRecords || loans || [];
+  const handleOpenSavings = onOpenNewSavings || onNavigateToSavings;
+  const handleOpenLoan = onOpenNewLoan || onNavigateToLoanApply;
+  const handlePayInstallment = onOpenPayInstallment || onNavigateToPayInstallment;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
@@ -55,6 +74,14 @@ export const MemberList: React.FC<MemberListProps> = ({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [memberToEdit, setMemberToEdit] = useState<Member | null>(null);
   const [selectedMemberDetail, setSelectedMemberDetail] = useState<Member | null>(null);
+
+  // Trigger add modal when signal received from universal header button
+  React.useEffect(() => {
+    if (triggerAddSignal && triggerAddSignal > 0) {
+      setMemberToEdit(null);
+      setIsFormOpen(true);
+    }
+  }, [triggerAddSignal]);
 
   // Units list for filter
   const unitList = useMemo(() => {
@@ -172,41 +199,18 @@ export const MemberList: React.FC<MemberListProps> = ({
     }
   };
 
+  const handleSaveMember = (member: Member) => {
+    if (onSaveMember) {
+      onSaveMember(member);
+    } else if (memberToEdit && onUpdateMember) {
+      onUpdateMember(member);
+    } else if (onAddMember) {
+      onAddMember(member);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
-      {/* Header Banner & Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md">
-            <Users className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Data Anggota Koperasi</h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Manajemen anggota, unit kerja RSUD Al-Mulk, saldo simpanan, dan buku rekening transaksi
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-          <button
-            onClick={handleExportMembersCSV}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs transition flex items-center gap-2 shadow-xs active:scale-95"
-          >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Export Data (CSV)</span>
-          </button>
-
-          <button
-            onClick={handleOpenAddModal}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs transition flex items-center gap-2 shadow-md hover:shadow-lg active:scale-95"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Tambah Anggota Baru</span>
-          </button>
-        </div>
-      </div>
-
       {/* Metric Cards Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
@@ -509,7 +513,7 @@ export const MemberList: React.FC<MemberListProps> = ({
       <MemberFormModal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        onSave={onSaveMember}
+        onSave={handleSaveMember}
         memberToEdit={memberToEdit}
         existingMembersCount={members.length}
       />
@@ -520,11 +524,11 @@ export const MemberList: React.FC<MemberListProps> = ({
         onClose={() => setSelectedMemberDetail(null)}
         member={selectedMemberDetail}
         savingsRecords={savingsRecords}
-        loanRecords={loanRecords}
+        loanRecords={effectiveLoans}
         transactions={transactions}
-        onOpenNewSavings={onOpenNewSavings}
-        onOpenNewLoan={onOpenNewLoan}
-        onOpenPayInstallment={onOpenPayInstallment}
+        onOpenNewSavings={handleOpenSavings}
+        onOpenNewLoan={handleOpenLoan}
+        onOpenPayInstallment={handlePayInstallment}
       />
     </div>
   );

@@ -172,23 +172,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   isCollapsed ? 'px-0 lg:justify-center' : 'px-3.5 gap-3'
                 } ${
                   isActive
-                    ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-white font-extrabold shadow-lg shadow-amber-950/30 border border-amber-300/50 ring-1 ring-yellow-300/40'
-                    : 'text-emerald-100 hover:bg-emerald-600/70 hover:text-white'
+                    ? 'neumorphism-sidebar-active text-amber-300 font-extrabold border-l-4 border-amber-300'
+                    : 'text-emerald-100 hover:bg-emerald-600/70 hover:text-white border-l-4 border-transparent'
                 }`}
               >
                 <div
                   className={`w-5 h-5 shrink-0 transition-transform flex items-center justify-center ${
-                    isActive ? 'opacity-100 text-white animate-smooth-jump-5s' : 'opacity-85 group-hover:opacity-100'
+                    isActive ? 'opacity-100 text-amber-300 animate-smooth-jump-5s' : 'opacity-85 group-hover:opacity-100'
                   }`}
                 >
-                  <Icon className="w-5 h-5 text-white stroke-[2.2]" />
+                  <Icon className={`w-5 h-5 stroke-[2.2] ${isActive ? 'text-amber-300' : 'text-emerald-100 group-hover:text-white'}`} />
                 </div>
-                {!isCollapsed && <span className="truncate text-white font-bold">{item.label}</span>}
+                {!isCollapsed && (
+                  <span className={`truncate ${isActive ? 'text-amber-300 font-extrabold' : 'text-emerald-100 group-hover:text-white font-bold'}`}>
+                    {item.label}
+                  </span>
+                )}
                 {item.badge && (
                   <span
                     className={`${
                       isCollapsed
-                        ? 'absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-yellow-400 ring-2 ring-emerald-700'
+                        ? 'absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-amber-300 ring-2 ring-emerald-700'
+                        : isActive
+                        ? 'ml-auto px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-black text-[9px] leading-tight border border-amber-300/40'
                         : 'ml-auto px-2 py-0.5 rounded-full bg-white/20 text-white font-black text-[9px] leading-tight backdrop-blur-xs border border-white/30'
                     }`}
                   >

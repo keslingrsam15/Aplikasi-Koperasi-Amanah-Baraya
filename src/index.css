@@ -52,21 +52,21 @@ body {
     transform: translateY(0) scale(1, 1);
   }
   2% {
-    transform: translateY(1px) scale(1.06, 0.94);
+    transform: translateY(1.5px) scale(1.1, 0.9);
   }
-  5.5% {
-    transform: translateY(-6px) scale(0.95, 1.05);
+  6% {
+    transform: translateY(-8px) scale(0.92, 1.08);
   }
   9% {
-    transform: translateY(0) scale(1.05, 0.95);
+    transform: translateY(0) scale(1.06, 0.94);
   }
   12% {
-    transform: translateY(-2.5px) scale(0.98, 1.02);
+    transform: translateY(-3.5px) scale(0.97, 1.03);
   }
   15% {
     transform: translateY(0) scale(1.02, 0.98);
   }
-  17.5% {
+  18% {
     transform: translateY(0) scale(1, 1);
   }
   100% {
@@ -78,6 +78,15 @@ body {
   animation: smoothHop5s 5s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
   transform-origin: bottom center;
   will-change: transform;
+}
+
+/* Premium Neumorphism effect for active sidebar menu item */
+.neumorphism-sidebar-active {
+  background: linear-gradient(145deg, #058561, #03684b);
+  box-shadow: 
+    4px 4px 8px rgba(1, 35, 27, 0.45),
+    -3px -3px 7px rgba(110, 231, 183, 0.22),
+    inset 0 1px 1px rgba(255, 255, 255, 0.18);
 }
 
 @media print {
