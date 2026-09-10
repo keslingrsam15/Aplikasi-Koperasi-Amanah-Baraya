@@ -10,7 +10,6 @@ import {
   Plus,
   Minus,
   Trash2,
-  Camera,
   ShoppingBag,
   CreditCard,
   User,
@@ -78,11 +77,6 @@ export const PosScreen: React.FC<PosScreenProps> = ({
   const [heldCarts, setHeldCarts] = useState<HeldCart[]>([]);
 
   const barcodeInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Auto focus barcode input on mount and after actions
-  useEffect(() => {
-    barcodeInputRef.current?.focus();
-  }, []);
 
   // Categories list
   const categories = ['Semua', ...Array.from(new Set(products.map((p) => p.category)))];
@@ -438,15 +432,6 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                 />
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCameraOpen(true)}
-                  className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold border border-emerald-200/80 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs"
-                  title="Buka Kamera Barcode Scanner"
-                >
-                  <Camera className="w-4 h-4 text-emerald-700" />
-                  <span className="hidden sm:inline">Scan Kamera</span>
-                </button>
                 <div className="text-xs text-slate-900 font-bold whitespace-nowrap self-center">
                   Ditemukan: <span className="font-black text-slate-950">{filteredProducts.length}</span> barang
                 </div>
@@ -1077,9 +1062,6 @@ export const PosScreen: React.FC<PosScreenProps> = ({
         onNewTransaction={() => {
           setIsReceiptOpen(false);
           setCart([]);
-          setTimeout(() => {
-            barcodeInputRef.current?.focus();
-          }, 100);
         }}
       />
     </div>

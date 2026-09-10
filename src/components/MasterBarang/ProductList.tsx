@@ -10,6 +10,7 @@ import {
   Filter,
   Printer,
   Edit,
+  Pencil,
   Trash2,
   Barcode,
   ArrowUpDown,
@@ -26,6 +27,22 @@ import {
   RefreshCw,
   Loader2,
 } from 'lucide-react';
+
+const STORAGE_CATEGORIES_KEY = 'koperasi_product_custom_categories';
+
+const DEFAULT_PRODUCT_CATEGORIES = [
+  'Buah-buahan',
+  'Makanan Berat',
+  'Kopi & Minuman Warkop',
+  'Jajanan Warung',
+  'Makanan Ringan',
+  'Minuman',
+  'Kesehatan & Medis',
+  'Perlengkapan Pasien',
+  'Perlengkapan Mandi',
+  'Alat Tulis Kantor',
+  'Kebutuhan Sehari-hari',
+];
 
 interface ProductListProps {
   products: Product[];
@@ -65,11 +82,31 @@ export const ProductList: React.FC<ProductListProps> = ({
   // Single barcode preview modal
   const [previewBarcodeProduct, setPreviewBarcodeProduct] = useState<Product | null>(null);
 
+  // Categories state with local storage persistence
+  const [categoriesList, setCategoriesList] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_CATEGORIES_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const list = [...parsed];
+          if (!list.includes('Buah-buahan')) list.unshift('Buah-buahan');
+          if (!list.includes('Makanan Berat')) list.splice(1, 0, 'Makanan Berat');
+          return list;
+        }
+      }
+    } catch {}
+    return DEFAULT_PRODUCT_CATEGORIES;
+  });
+
+  const [categoryMode, setCategoryMode] = useState<'idle' | 'add' | 'edit'>('idle');
+  const [categoryInputText, setCategoryInputText] = useState<string>('');
+
   // Form fields
   const [formCode, setFormCode] = useState<string>('');
   const [formBarcode, setFormBarcode] = useState<string>('');
   const [formName, setFormName] = useState<string>('');
-  const [formCategory, setFormCategory] = useState<string>('Minuman');
+  const [formCategory, setFormCategory] = useState<string>('Buah-buahan');
   const [formBuyPrice, setFormBuyPrice] = useState<string>('0');
   const [formSellPrice, setFormSellPrice] = useState<string>('0');
   const [formStock, setFormStock] = useState<string>('0');
@@ -84,7 +121,63 @@ export const ProductList: React.FC<ProductListProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const categories = ['Semua', ...Array.from(new Set(products.map((p) => p.category)))];
+  const categories = ['Semua', ...Array.from(new Set([...categoriesList, ...products.map((p) => p.category)]))];
+
+  // Category management handlers
+  const handleSaveNewCategory = () => {
+    const trimmed = categoryInputText.trim();
+    if (!trimmed) {
+      alert('Silahkan masukkan nama kategori.');
+      return;
+    }
+    if (categoriesList.includes(trimmed)) {
+      setFormCategory(trimmed);
+      setCategoryMode('idle');
+      return;
+    }
+    const updated = [trimmed, ...categoriesList];
+    setCategoriesList(updated);
+    try {
+      localStorage.setItem(STORAGE_CATEGORIES_KEY, JSON.stringify(updated));
+    } catch {}
+    setFormCategory(trimmed);
+    setCategoryMode('idle');
+  };
+
+  const handleSaveEditCategory = () => {
+    const trimmed = categoryInputText.trim();
+    if (!trimmed) {
+      alert('Nama kategori tidak boleh kosong.');
+      return;
+    }
+    if (trimmed === formCategory) {
+      setCategoryMode('idle');
+      return;
+    }
+    const updated = categoriesList.map((c) => (c === formCategory ? trimmed : c));
+    setCategoriesList(updated);
+    try {
+      localStorage.setItem(STORAGE_CATEGORIES_KEY, JSON.stringify(updated));
+    } catch {}
+    setFormCategory(trimmed);
+    setCategoryMode('idle');
+  };
+
+  const handleDeleteCategory = () => {
+    if (categoriesList.length <= 1) {
+      alert('Minimal harus ada 1 kategori di dalam daftar.');
+      return;
+    }
+    if (window.confirm(`Yakin ingin menghapus kategori "${formCategory}" dari pilihan dropdown?`)) {
+      const updated = categoriesList.filter((c) => c !== formCategory);
+      setCategoriesList(updated);
+      try {
+        localStorage.setItem(STORAGE_CATEGORIES_KEY, JSON.stringify(updated));
+      } catch {}
+      setFormCategory(updated[0] || 'Umum');
+      setCategoryMode('idle');
+    }
+  };
 
   const handleOpenAdd = () => {
     const nextCode = generateNextProductCode(products);
@@ -92,7 +185,9 @@ export const ProductList: React.FC<ProductListProps> = ({
     setFormCode(nextCode);
     setFormBarcode(nextCode); // Barcode automatically matches code
     setFormName('');
-    setFormCategory('Minuman');
+    setFormCategory(categoriesList[0] || 'Buah-buahan');
+    setCategoryMode('idle');
+    setCategoryInputText('');
     setFormBuyPrice('0');
     setFormSellPrice('0');
     setFormStock('10');
@@ -111,6 +206,15 @@ export const ProductList: React.FC<ProductListProps> = ({
     setFormBarcode(p.barcode);
     setFormName(p.name);
     setFormCategory(p.category);
+    if (p.category && !categoriesList.includes(p.category)) {
+      const updated = [...categoriesList, p.category];
+      setCategoriesList(updated);
+      try {
+        localStorage.setItem(STORAGE_CATEGORIES_KEY, JSON.stringify(updated));
+      } catch {}
+    }
+    setCategoryMode('idle');
+    setCategoryInputText('');
     setFormBuyPrice(p.buyPrice.toString());
     setFormSellPrice(p.sellPrice.toString());
     setFormStock(p.stock.toString());
@@ -835,24 +939,151 @@ export const ProductList: React.FC<ProductListProps> = ({
               {/* Kategori & Satuan */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-black text-slate-950 mb-1">
-                    Kategori:
-                  </label>
-                  <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-300 rounded-xl font-bold text-slate-950 focus:border-emerald-600 focus:bg-white outline-none"
-                  >
-                    <option value="Kopi & Minuman Warkop">Kopi & Minuman Warkop</option>
-                    <option value="Jajanan Warung">Jajanan Warung</option>
-                    <option value="Makanan Ringan">Makanan Ringan</option>
-                    <option value="Minuman">Minuman</option>
-                    <option value="Kesehatan & Medis">Kesehatan & Medis</option>
-                    <option value="Perlengkapan Pasien">Perlengkapan Pasien</option>
-                    <option value="Perlengkapan Mandi">Perlengkapan Mandi</option>
-                    <option value="Alat Tulis Kantor">Alat Tulis Kantor</option>
-                    <option value="Kebutuhan Sehari-hari">Kebutuhan Sehari-hari</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-black text-slate-950 text-xs sm:text-sm">
+                      Kategori:
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {/* Icon + untuk tambah kategori */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryInputText('');
+                          setCategoryMode((prev) => (prev === 'add' ? 'idle' : 'add'));
+                        }}
+                        className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                          categoryMode === 'add'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                        }`}
+                        title="Tambah Kategori Baru (+)"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+
+                      {/* Icon Pena untuk edit kategori */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCategoryInputText(formCategory);
+                          setCategoryMode((prev) => (prev === 'edit' ? 'idle' : 'edit'));
+                        }}
+                        className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                          categoryMode === 'edit'
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                            : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
+                        }`}
+                        title="Edit Kategori yang Dipilih"
+                      >
+                        <Pencil className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+
+                      {/* Icon Sampah untuk hapus kategori */}
+                      <button
+                        type="button"
+                        onClick={handleDeleteCategory}
+                        className="p-1.5 rounded-lg border bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 transition cursor-pointer"
+                        title="Hapus Kategori yang Dipilih"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Kategori Input: Mode Input Tambah / Edit atau Dropdown Pilihan */}
+                  {categoryMode === 'add' ? (
+                    <div className="space-y-1 animate-fadeIn">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Ketik kategori baru..."
+                          value={categoryInputText}
+                          onChange={(e) => setCategoryInputText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleSaveNewCategory();
+                            } else if (e.key === 'Escape') {
+                              setCategoryMode('idle');
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-white border-2 border-emerald-500 rounded-xl text-xs sm:text-sm font-bold text-slate-950 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSaveNewCategory}
+                          className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition cursor-pointer shrink-0 shadow-xs"
+                          title="Simpan Kategori"
+                        >
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCategoryMode('idle')}
+                          className="p-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition cursor-pointer shrink-0"
+                          title="Batal"
+                        >
+                          <X className="w-4 h-4 stroke-[3]" />
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-emerald-700 font-semibold">
+                        Tekan Enter atau centang untuk menyimpan ke dropdown.
+                      </p>
+                    </div>
+                  ) : categoryMode === 'edit' ? (
+                    <div className="space-y-1 animate-fadeIn">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Ubah nama kategori..."
+                          value={categoryInputText}
+                          onChange={(e) => setCategoryInputText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleSaveEditCategory();
+                            } else if (e.key === 'Escape') {
+                              setCategoryMode('idle');
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-white border-2 border-amber-500 rounded-xl text-xs sm:text-sm font-bold text-slate-950 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSaveEditCategory}
+                          className="p-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold transition cursor-pointer shrink-0 shadow-xs"
+                          title="Simpan Perubahan"
+                        >
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCategoryMode('idle')}
+                          className="p-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition cursor-pointer shrink-0"
+                          title="Batal"
+                        >
+                          <X className="w-4 h-4 stroke-[3]" />
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-amber-700 font-semibold">
+                        Mengubah nama kategori &quot;{formCategory}&quot;.
+                      </p>
+                    </div>
+                  ) : (
+                    <select
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-300 rounded-xl font-bold text-slate-950 focus:border-emerald-600 focus:bg-white outline-none text-xs sm:text-sm"
+                    >
+                      {categoriesList.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>

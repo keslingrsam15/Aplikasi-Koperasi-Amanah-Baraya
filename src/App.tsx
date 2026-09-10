@@ -459,23 +459,63 @@ export function App() {
     setMembers((prev) => [newMem, ...prev]);
     saveMemberToSupabase(newMem);
 
-    // If initial simpanan pokok > 0, create automatic initial savings record
+    const nowIso = new Date().toISOString();
+    const newSavings: SavingsRecord[] = [];
+
+    // 1. Simpanan Pokok
     if (newMem.simpananPokok > 0) {
-      const initialSaving: SavingsRecord = {
-        id: `SMP-${Date.now()}`,
-        receiptNumber: `SMP-POKOK-${newMem.memberNumber.slice(-4)}`,
+      newSavings.push({
+        id: `SMP-${Date.now()}-POKOK`,
+        receiptNumber: `SMP-PKK-${newMem.memberNumber.slice(-4)}`,
         memberId: newMem.id,
         memberNumber: newMem.memberNumber,
         memberName: newMem.name,
         type: 'pokok',
         transactionType: 'setor',
         amount: newMem.simpananPokok,
-        date: new Date().toISOString(),
+        date: nowIso,
         notes: 'Setoran Simpanan Pokok Awal Pendaftaran Anggota',
         operator: currentUser.name || 'Petugas Koperasi',
-      };
-      setSavingsRecords((prev) => [initialSaving, ...prev]);
-      saveSavingsToSupabase(initialSaving);
+      });
+    }
+
+    // 2. Simpanan Wajib
+    if (newMem.simpananWajib > 0) {
+      newSavings.push({
+        id: `SMP-${Date.now() + 1}-WAJIB`,
+        receiptNumber: `SMP-WJB-${newMem.memberNumber.slice(-4)}`,
+        memberId: newMem.id,
+        memberNumber: newMem.memberNumber,
+        memberName: newMem.name,
+        type: 'wajib',
+        transactionType: 'setor',
+        amount: newMem.simpananWajib,
+        date: nowIso,
+        notes: 'Setoran Simpanan Wajib Awal Pendaftaran Anggota',
+        operator: currentUser.name || 'Petugas Koperasi',
+      });
+    }
+
+    // 3. Simpanan Sukarela
+    if (newMem.simpananSukarela > 0) {
+      newSavings.push({
+        id: `SMP-${Date.now() + 2}-SUKARELA`,
+        receiptNumber: `SMP-SKR-${newMem.memberNumber.slice(-4)}`,
+        memberId: newMem.id,
+        memberNumber: newMem.memberNumber,
+        memberName: newMem.name,
+        type: 'sukarela',
+        transactionType: 'setor',
+        amount: newMem.simpananSukarela,
+        date: nowIso,
+        notes: 'Setoran Simpanan Sukarela Awal Pendaftaran Anggota',
+        operator: currentUser.name || 'Petugas Koperasi',
+      });
+    }
+
+    if (newSavings.length > 0) {
+      setSavingsRecords((prev) => [...newSavings, ...prev]);
+      newSavings.forEach((s) => saveSavingsToSupabase(s));
     }
   };
 
@@ -731,7 +771,7 @@ export function App() {
                   <UserPlus className="w-4 h-4" />
                   <span>Tambah Anggota</span>
                 </button>
-              ) : activeTab !== 'pos' ? (
+              ) : activeTab === 'dashboard' ? (
                 <button
                   onClick={() => setActiveTab('pos')}
                   className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl shadow-sm text-xs sm:text-sm font-bold flex items-center gap-2 transition active:scale-95 self-start sm:self-auto cursor-pointer shrink-0"

@@ -100,6 +100,8 @@ export const initialUsers: UserProfile[] = [
 
 export const initialCategories = [
   'Semua Kategori',
+  'Buah-buahan',
+  'Makanan Berat',
   'Kopi & Minuman Warkop',
   'Jajanan Warung',
   'Makanan Ringan',

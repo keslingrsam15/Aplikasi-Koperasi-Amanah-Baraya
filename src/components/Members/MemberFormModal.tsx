@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Member } from '../../types';
-import { initialUnitKerjaList } from '../../data/initialData';
-import { X, UserCheck, Save, Phone, Briefcase, Calendar, DollarSign, FileText } from 'lucide-react';
+import { X, UserCheck, Save, Plus, Check } from 'lucide-react';
+
+const STORAGE_UNIT_KEY = 'koperasi_rsud_unit_kerja_list';
 
 interface MemberFormModalProps {
   isOpen: boolean;
@@ -18,11 +19,24 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
   memberToEdit,
   existingMembersCount,
 }) => {
+  // Dropdown options for Unit Kerja - starts empty, populated when user adds units
+  const [savedUnits, setSavedUnits] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_UNIT_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [unitInput, setUnitInput] = useState<string>('');
+  const [unitSuccessMsg, setUnitSuccessMsg] = useState<string>('');
+
   const [formData, setFormData] = useState<Partial<Member>>({
     memberNumber: '',
     name: '',
     nikOrNip: '',
-    unitKerja: initialUnitKerjaList[0] || 'Umum',
+    unitKerja: '',
     phone: '',
     email: '',
     joinDate: new Date().toISOString().slice(0, 10),
@@ -34,18 +48,16 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
     notes: '',
   });
 
-  const [customUnitKerja, setCustomUnitKerja] = useState('');
-  const [isCustomUnit, setIsCustomUnit] = useState(false);
-
   useEffect(() => {
     if (memberToEdit) {
       setFormData({ ...memberToEdit });
-      if (!initialUnitKerjaList.includes(memberToEdit.unitKerja)) {
-        setIsCustomUnit(true);
-        setCustomUnitKerja(memberToEdit.unitKerja);
-      } else {
-        setIsCustomUnit(false);
-        setCustomUnitKerja('');
+      setUnitInput(memberToEdit.unitKerja || '');
+      if (memberToEdit.unitKerja && !savedUnits.includes(memberToEdit.unitKerja)) {
+        const updated = [...savedUnits, memberToEdit.unitKerja];
+        setSavedUnits(updated);
+        try {
+          localStorage.setItem(STORAGE_UNIT_KEY, JSON.stringify(updated));
+        } catch {}
       }
     } else {
       const nextSeq = String(existingMembersCount + 1).padStart(3, '0');
@@ -54,7 +66,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
         memberNumber: `ANG-${year}-${nextSeq}`,
         name: '',
         nikOrNip: '',
-        unitKerja: initialUnitKerjaList[0] || 'Umum',
+        unitKerja: '',
         phone: '',
         email: '',
         joinDate: new Date().toISOString().slice(0, 10),
@@ -65,22 +77,68 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
         address: '',
         notes: '',
       });
-      setIsCustomUnit(false);
-      setCustomUnitKerja('');
+      setUnitInput('');
     }
   }, [memberToEdit, existingMembersCount, isOpen]);
 
   if (!isOpen) return null;
 
+  // Handle adding new Unit Kerja into dropdown list and localStorage
+  const handleAddUnitKerja = () => {
+    const trimmed = unitInput.trim();
+    if (!trimmed) {
+      alert('Silahkan ketik nama unit kerja terlebih dahulu.');
+      return;
+    }
+
+    if (!savedUnits.includes(trimmed)) {
+      const updated = [...savedUnits, trimmed];
+      setSavedUnits(updated);
+      try {
+        localStorage.setItem(STORAGE_UNIT_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.error('Gagal menyimpan unit kerja:', err);
+      }
+      setUnitSuccessMsg(`Unit "${trimmed}" berhasil ditambahkan ke dropdown!`);
+    } else {
+      setUnitSuccessMsg(`Unit "${trimmed}" sudah ada di dropdown.`);
+    }
+
+    setFormData((prev) => ({ ...prev, unitKerja: trimmed }));
+    setTimeout(() => setUnitSuccessMsg(''), 3500);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name?.trim()) return;
+    if (!formData.name?.trim()) {
+      alert('Silahkan masukan nama lengkap.');
+      return;
+    }
 
-    const finalUnit = isCustomUnit ? customUnitKerja.trim() || 'Umum' : formData.unitKerja || 'Umum';
+    const finalUnit = (unitInput || formData.unitKerja || '').trim();
+    if (!finalUnit) {
+      alert('Silahkan tentukan Unit Kerja (ketik manual atau pilih dari dropdown).');
+      return;
+    }
+
+    // Auto-save unit kerja to dropdown if not present yet
+    if (!savedUnits.includes(finalUnit)) {
+      const updated = [...savedUnits, finalUnit];
+      setSavedUnits(updated);
+      try {
+        localStorage.setItem(STORAGE_UNIT_KEY, JSON.stringify(updated));
+      } catch {}
+    }
+
+    const nextSeq = String(existingMembersCount + 1).padStart(3, '0');
+    const year = new Date().getFullYear();
+    const finalMemberNumber =
+      formData.memberNumber?.trim() ||
+      (memberToEdit?.memberNumber ? memberToEdit.memberNumber : `ANG-${year}-${nextSeq}`);
 
     const memberData: Member = {
-      id: memberToEdit?.id || `MEM-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      memberNumber: formData.memberNumber?.trim() || `ANG-${Date.now().toString().slice(-4)}`,
+      id: memberToEdit?.id || `MEM-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      memberNumber: finalMemberNumber,
       name: formData.name.trim(),
       nikOrNip: formData.nikOrNip?.trim() || undefined,
       unitKerja: finalUnit,
@@ -88,9 +146,9 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
       email: formData.email?.trim() || undefined,
       joinDate: formData.joinDate || new Date().toISOString().slice(0, 10),
       status: (formData.status as 'active' | 'inactive') || 'active',
-      simpananPokok: Number(formData.simpananPokok || 0),
-      simpananWajib: Number(formData.simpananWajib || 0),
-      simpananSukarela: Number(formData.simpananSukarela || 0),
+      simpananPokok: Math.max(0, Number(formData.simpananPokok || 0)),
+      simpananWajib: Math.max(0, Number(formData.simpananWajib || 0)),
+      simpananSukarela: Math.max(0, Number(formData.simpananSukarela || 0)),
       address: formData.address?.trim() || undefined,
       notes: formData.notes?.trim() || undefined,
       updatedAt: new Date().toISOString(),
@@ -122,7 +180,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition"
+            className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -130,38 +188,22 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          {/* Baris 1: Nomor Anggota & Nama Lengkap */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">
-                Nomor Anggota <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.memberNumber || ''}
-                onChange={(e) => setFormData({ ...formData, memberNumber: e.target.value })}
-                placeholder="Contoh: ANG-2026-001"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">
-                Nama Lengkap Anggota <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.name || ''}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Contoh: dr. H. Rahmat Hidayat, Sp.PD"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+          {/* Nama Lengkap Anggota (Kolom Nomor Anggota telah dihilangkan sesuai permintaan) */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              Nama Lengkap Anggota <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name || ''}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Silahkan masukan nama lengkap"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+            />
           </div>
 
-          {/* Baris 2: NIP/NIK & Unit Kerja RSUD */}
+          {/* Baris 2: NIP/NIK & No. HP / WhatsApp */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 mb-1">
@@ -177,44 +219,6 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1 flex items-center justify-between">
-                <span>Unit Kerja di RSUD <span className="text-rose-500">*</span></span>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomUnit(!isCustomUnit)}
-                  className="text-[10px] text-emerald-600 hover:underline font-normal"
-                >
-                  {isCustomUnit ? 'Pilih dari Daftar' : '+ Ketik Manual'}
-                </button>
-              </label>
-              {isCustomUnit ? (
-                <input
-                  type="text"
-                  required
-                  placeholder="Ketik nama unit kerja..."
-                  value={customUnitKerja}
-                  onChange={(e) => setCustomUnitKerja(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              ) : (
-                <select
-                  value={formData.unitKerja}
-                  onChange={(e) => setFormData({ ...formData, unitKerja: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  {initialUnitKerjaList.map((unit) => (
-                    <option key={unit} value={unit}>
-                      {unit}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-
-          {/* Baris 3: No Telp/WhatsApp & Tanggal Bergabung */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
               <label className="block font-bold text-slate-700 mb-1">
                 No. HP / WhatsApp
               </label>
@@ -226,7 +230,80 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
+          </div>
 
+          {/* Baris 3: Unit Kerja (Dropdown kosong bawaan, ketik manual & fitur tambah unit kerja) */}
+          <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block font-bold text-slate-800">
+                Unit Kerja <span className="text-rose-500">*</span>
+              </label>
+              {savedUnits.length > 0 && (
+                <span className="text-[10px] text-slate-500 font-semibold">
+                  {savedUnits.length} Unit Tersimpan di Dropdown
+                </span>
+              )}
+            </div>
+
+            {/* Dropdown Unit Kerja */}
+            <div>
+              <select
+                value={formData.unitKerja || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData((prev) => ({ ...prev, unitKerja: val }));
+                  setUnitInput(val);
+                }}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">
+                  {savedUnits.length === 0
+                    ? '-- Belum ada unit tersimpan di dropdown (Ketik di bawah) --'
+                    : '-- Pilih dari Unit Kerja Tersimpan --'}
+                </option>
+                {savedUnits.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Input Ketik Manual & Tombol Tambah Unit Kerja */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="Ketik manual nama unit kerja..."
+                  value={unitInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setUnitInput(val);
+                    setFormData((prev) => ({ ...prev, unitKerja: val }));
+                  }}
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleAddUnitKerja}
+                className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition active:scale-95 cursor-pointer shadow-xs shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Unit Kerja</span>
+              </button>
+            </div>
+
+            {unitSuccessMsg && (
+              <div className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 mt-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{unitSuccessMsg}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Baris 4: Tanggal Bergabung & Status Keanggotaan */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 mb-1">
                 Tanggal Bergabung <span className="text-rose-500">*</span>
@@ -239,13 +316,26 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Status Keanggotaan:
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="active">Aktif (Bisa Transaksi & Pinjam)</option>
+                <option value="inactive">Non-Aktif / Pensiun / Keluar</option>
+              </select>
+            </div>
           </div>
 
-          {/* Section: Saldo Simpanan Awal */}
+          {/* Section: Saldo Simpanan Awal (Simbol dolar dihilangkan sesuai permintaan) */}
           <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 space-y-3">
             <div className="font-bold text-emerald-900 flex items-center gap-1.5">
-              <DollarSign className="w-4 h-4 text-emerald-600" />
-              <span>Saldo Simpanan Koperasi (Rupiah)</span>
+              <span className="text-sm">Saldo Simpanan Koperasi (Rupiah)</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -314,34 +404,18 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
             </div>
           </div>
 
-          {/* Status & Catatan */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">
-                Status Keanggotaan:
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="active">Aktif (Bisa Transaksi & Pinjam)</option>
-                <option value="inactive">Non-Aktif / Pensiun / Keluar</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 mb-1">
-                Catatan Tambahan (Opsional):
-              </label>
-              <input
-                type="text"
-                value={formData.notes || ''}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Contoh: No. Rekening Bank BJB / Catatan khusus"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+          {/* Catatan Tambahan */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              Catatan Tambahan (Opsional):
+            </label>
+            <input
+              type="text"
+              value={formData.notes || ''}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Contoh: No. Rekening Bank BJB / Catatan khusus anggota"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
+            />
           </div>
 
           {/* Tombol Aksi */}
@@ -349,13 +423,13 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95"
+              className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>{memberToEdit ? 'Simpan Perubahan' : 'Daftarkan Anggota'}</span>
