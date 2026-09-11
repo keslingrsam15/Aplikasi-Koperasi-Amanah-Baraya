@@ -206,6 +206,12 @@ export function App() {
   const [addProductSignal, setAddProductSignal] = useState<number>(0);
   const [addMemberSignal, setAddMemberSignal] = useState<number>(0);
 
+  // Reset add signals when switching tabs so returning to tab shows normal default list
+  useEffect(() => {
+    setAddProductSignal(0);
+    setAddMemberSignal(0);
+  }, [activeTab]);
+
   // Deep linking for Simpan Pinjam tab
   const [simpanPinjamInitialTab, setSimpanPinjamInitialTab] = useState<'savings' | 'loans'>('savings');
   const [simpanPinjamSelectedMember, setSimpanPinjamSelectedMember] = useState<Member | null>(null);
@@ -822,6 +828,7 @@ export function App() {
                 onDeleteProduct={handleDeleteProduct}
                 onOpenBarcodeStudio={() => setActiveTab('products')}
                 triggerAddSignal={addProductSignal}
+                onResetAddSignal={() => setAddProductSignal(0)}
               />
             )}
 
@@ -849,6 +856,7 @@ export function App() {
                 onNavigateToLoanApply={handleNavigateToLoanApply}
                 onNavigateToPayInstallment={handleNavigateToPayInstallment}
                 triggerAddSignal={addMemberSignal}
+                onResetAddSignal={() => setAddMemberSignal(0)}
               />
             )}
 

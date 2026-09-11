@@ -39,6 +39,7 @@ interface MemberListProps {
   onNavigateToLoanApply?: (member: Member) => void;
   onNavigateToPayInstallment?: (loan: LoanRecord) => void;
   triggerAddSignal?: number;
+  onResetAddSignal?: () => void;
 }
 
 export const MemberList: React.FC<MemberListProps> = ({
@@ -58,6 +59,7 @@ export const MemberList: React.FC<MemberListProps> = ({
   onNavigateToLoanApply,
   onNavigateToPayInstallment,
   triggerAddSignal,
+  onResetAddSignal,
 }) => {
   const effectiveLoans = loanRecords || loans || [];
   const handleOpenSavings = onOpenNewSavings || onNavigateToSavings;
@@ -75,13 +77,24 @@ export const MemberList: React.FC<MemberListProps> = ({
   const [memberToEdit, setMemberToEdit] = useState<Member | null>(null);
   const [selectedMemberDetail, setSelectedMemberDetail] = useState<Member | null>(null);
 
+  const lastSignalRef = React.useRef<number>(triggerAddSignal || 0);
+
   // Trigger add modal when signal received from universal header button
   React.useEffect(() => {
-    if (triggerAddSignal && triggerAddSignal > 0) {
+    if (triggerAddSignal && triggerAddSignal > lastSignalRef.current) {
+      lastSignalRef.current = triggerAddSignal;
       setMemberToEdit(null);
       setIsFormOpen(true);
+    } else if (!triggerAddSignal) {
+      lastSignalRef.current = 0;
     }
   }, [triggerAddSignal]);
+
+  const handleCloseMemberForm = () => {
+    setIsFormOpen(false);
+    setMemberToEdit(null);
+    onResetAddSignal?.();
+  };
 
   // Units list for filter
   const unitList = useMemo(() => {
@@ -207,6 +220,7 @@ export const MemberList: React.FC<MemberListProps> = ({
     } else if (onAddMember) {
       onAddMember(member);
     }
+    handleCloseMemberForm();
   };
 
   return (
@@ -512,7 +526,7 @@ export const MemberList: React.FC<MemberListProps> = ({
       {/* Form Add / Edit Modal */}
       <MemberFormModal
         isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
+        onClose={handleCloseMemberForm}
         onSave={handleSaveMember}
         memberToEdit={memberToEdit}
         existingMembersCount={members.length}

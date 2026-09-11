@@ -52,6 +52,7 @@ interface ProductListProps {
   onDeleteProduct: (productId: string) => void;
   onOpenBarcodeStudio?: (selectedProductId?: string) => void;
   triggerAddSignal?: number;
+  onResetAddSignal?: () => void;
 }
 
 export const ProductList: React.FC<ProductListProps> = ({
@@ -62,15 +63,21 @@ export const ProductList: React.FC<ProductListProps> = ({
   onDeleteProduct,
   onOpenBarcodeStudio,
   triggerAddSignal,
+  onResetAddSignal,
 }) => {
   const [search, setSearch] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'stock' | 'sellPrice' | 'code'>('code');
 
+  const lastSignalRef = useRef<number>(triggerAddSignal || 0);
+
   useEffect(() => {
-    if (triggerAddSignal && triggerAddSignal > 0) {
+    if (triggerAddSignal && triggerAddSignal > lastSignalRef.current) {
+      lastSignalRef.current = triggerAddSignal;
       handleOpenAdd();
+    } else if (!triggerAddSignal) {
+      lastSignalRef.current = 0;
     }
   }, [triggerAddSignal]);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -78,6 +85,12 @@ export const ProductList: React.FC<ProductListProps> = ({
   // Modal form states
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingProduct(null);
+    onResetAddSignal?.();
+  };
 
   // Single barcode preview modal
   const [previewBarcodeProduct, setPreviewBarcodeProduct] = useState<Product | null>(null);
@@ -342,7 +355,7 @@ export const ProductList: React.FC<ProductListProps> = ({
       onAddProduct(newProd);
     }
 
-    setIsFormOpen(false);
+    handleCloseForm();
   };
 
   const handleDelete = (prod: Product) => {
@@ -708,7 +721,7 @@ export const ProductList: React.FC<ProductListProps> = ({
               </div>
               <button
                 id="btn-close-product-form"
-                onClick={() => setIsFormOpen(false)}
+                onClick={handleCloseForm}
                 className="text-white/80 hover:text-white p-1 rounded-lg transition"
               >
                 <X className="w-5 h-5" />
@@ -1176,7 +1189,7 @@ export const ProductList: React.FC<ProductListProps> = ({
               <div className="pt-3 border-t-2 border-slate-200 grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsFormOpen(false)}
+                  onClick={handleCloseForm}
                   className="py-2.5 px-4 bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold rounded-xl transition"
                 >
                   Batal
