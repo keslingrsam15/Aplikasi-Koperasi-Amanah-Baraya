@@ -93,8 +93,27 @@ export const initialUsers: UserProfile[] = [
     name: 'Kepala Toko',
     role: 'admin',
     avatarColor: 'bg-blue-600',
-    nipOrNik: '',
+    nipOrNik: '198503152010011002',
     shift: 'Akses Penuh Sistem',
+    permissions: ['dashboard', 'pos', 'products', 'stock', 'members', 'simpanpinjam', 'reports', 'users', 'settings'],
+  },
+  {
+    id: 'USR-KASIR-01',
+    name: 'Petugas Kasir 1',
+    role: 'kasir',
+    avatarColor: 'bg-emerald-600',
+    nipOrNik: 'KSR-2026-001',
+    shift: 'Shift Pagi (07:00 - 15:00)',
+    permissions: ['dashboard', 'pos', 'products', 'stock'],
+  },
+  {
+    id: 'USR-KASIR-02',
+    name: 'Petugas Kasir 2',
+    role: 'kasir',
+    avatarColor: 'bg-teal-600',
+    nipOrNik: 'KSR-2026-002',
+    shift: 'Shift Siang (15:00 - 22:00)',
+    permissions: ['dashboard', 'pos', 'products', 'stock'],
   },
 ];
 

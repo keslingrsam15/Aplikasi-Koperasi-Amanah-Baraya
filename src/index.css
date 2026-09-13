@@ -21,29 +21,59 @@ body {
   scrollbar-width: none !important; /* Firefox */
 }
 
-/* Custom Thin Emerald Scrollbar */
+/* Custom Sleek Thin Emerald Scrollbar across the app & main page */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #10b981; /* Hijau emerald modern */
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #059669; /* Hijau emerald gelap saat disentuh/hover */
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #047857;
+}
+
+/* Firefox Thin Emerald Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #10b981 transparent;
+}
+
 .emerald-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 .emerald-scrollbar::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
   border-radius: 9999px;
 }
 
 .emerald-scrollbar::-webkit-scrollbar-thumb {
-  background: #047857;
+  background: #10b981;
   border-radius: 9999px;
 }
 
 .emerald-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #065f46;
+  background: #059669;
 }
 
 .emerald-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #047857 #f1f5f9;
+  scrollbar-color: #10b981 transparent;
 }
 
 /* Smooth 5-second periodic hopping animation for active sidebar icons */

@@ -1,5 +1,24 @@
 export type UserRole = 'admin' | 'kasir' | 'pengurus' | 'gudang';
 
+// Daftar menu yang diizinkan untuk akun kasir:
+// 1. Dashboard, 2. Kasir / Penjualan (pos), 3. Produk, 4. Stok & Mutasi
+export const CASHIER_ACCESSIBLE_TABS = ['dashboard', 'pos', 'products', 'stock'];
+
+export function isTabAccessibleForUser(tabId: string, user?: UserProfile | null): boolean {
+  if (!user) return false;
+  // Kepala Toko (admin) dan Pengurus dapat mengakses semua menu
+  if (user.role === 'admin') return true;
+  // Akun Kasir hanya bisa mengakses menu Dashboard, Kasir/Penjualan, Produk, dan Stok & Mutasi
+  if (user.role === 'kasir') {
+    return CASHIER_ACCESSIBLE_TABS.includes(tabId);
+  }
+  // Pengurus atau role lain dengan custom permissions
+  if (user.permissions && user.permissions.length > 0) {
+    return user.permissions.includes(tabId);
+  }
+  return CASHIER_ACCESSIBLE_TABS.includes(tabId);
+}
+
 export interface UserProfile {
   id: string;
   name: string;

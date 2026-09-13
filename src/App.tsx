@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Product,
   Transaction,
@@ -8,6 +8,7 @@ import {
   Member,
   SavingsRecord,
   LoanRecord,
+  isTabAccessibleForUser,
 } from './types';
 import {
   initialProducts,
@@ -56,7 +57,7 @@ import { QuickProductLookupModal } from './components/Scanner/QuickProductLookup
 import { ReceiptModal } from './components/Cashier/ReceiptModal';
 import { WelcomeScreen } from './components/Welcome/WelcomeScreen';
 import { AccountSelectionScreen } from './components/Auth/AccountSelectionScreen';
-import { ShoppingCart, PackagePlus, UserPlus } from 'lucide-react';
+import { ShoppingCart, PackagePlus, UserPlus, ArrowUp, Lock, ShieldAlert } from 'lucide-react';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'koperasi_rsud_products_v3',
@@ -131,7 +132,18 @@ export function App() {
   const [users, setUsers] = useState<UserProfile[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-      return saved ? JSON.parse(saved) : initialUsers;
+      if (saved) {
+        const parsed: UserProfile[] = JSON.parse(saved);
+        const hasKasir = parsed.some((u) => u.role === 'kasir');
+        if (!hasKasir) {
+          const defaultKasir = initialUsers.filter((u) => u.role === 'kasir');
+          const merged = [...parsed, ...defaultKasir];
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      }
+      return initialUsers;
     } catch {
       return initialUsers;
     }
@@ -599,9 +611,28 @@ export function App() {
     setActiveTab('simpanpinjam');
   };
 
-  // User management handlers
+  const mainScrollRef = useRef<HTMLElement>(null);
+  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
+
+  const handleMainScroll = () => {
+    if (mainScrollRef.current) {
+      setShowScrollTop(mainScrollRef.current.scrollTop > 180);
+    }
+  };
+
   const handleSwitchUser = (u: UserProfile) => {
     setCurrentUser(u);
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, u.id);
+    if (!isTabAccessibleForUser(activeTab, u)) {
+      setActiveTab('dashboard');
+    }
+  };
+
+  const handleSelectTab = (tab: string) => {
+    if (!isTabAccessibleForUser(tab, currentUser)) {
+      return;
+    }
+    setActiveTab(tab);
   };
 
   const handleAddUser = (u: UserProfile) => {
@@ -717,7 +748,7 @@ export function App() {
       {/* Dark Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
-        onSelectTab={setActiveTab}
+        onSelectTab={handleSelectTab}
         currentUser={currentUser}
         users={users}
         onSwitchUser={handleSwitchUser}
@@ -737,7 +768,7 @@ export function App() {
           activeTab={activeTab}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onOpenQuickScan={() => setIsQuickLookupOpen(true)}
-          onNavigateToPos={() => setActiveTab('pos')}
+          onNavigateToPos={() => handleSelectTab('pos')}
           coopConfig={coopConfig}
           currentUser={currentUser}
           isCloudConnected={isCloudConnected}
@@ -745,8 +776,12 @@ export function App() {
           onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
 
-        {/* Scrollable Main Content View Container */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 lg:pt-5 pb-6 sm:pb-8">
+        {/* Scrollable Main Content View Container with Custom Emerald Scrollbar */}
+        <main
+          ref={mainScrollRef}
+          onScroll={handleMainScroll}
+          className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 lg:pt-5 pb-6 sm:pb-8 emerald-scrollbar scroll-smooth relative"
+        >
           <div className="max-w-7xl mx-auto w-full">
             {/* Header Judul Halaman Menu (Universal di bawah Header Utama) */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/60 mb-5">
@@ -779,7 +814,7 @@ export function App() {
                 </button>
               ) : activeTab === 'dashboard' ? (
                 <button
-                  onClick={() => setActiveTab('pos')}
+                  onClick={() => handleSelectTab('pos')}
                   className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl shadow-sm text-xs sm:text-sm font-bold flex items-center gap-2 transition active:scale-95 self-start sm:self-auto cursor-pointer shrink-0"
                 >
                   <ShoppingCart className="w-4 h-4" />
@@ -788,19 +823,50 @@ export function App() {
               ) : null}
             </div>
 
-            {/* 1. Dashboard */}
-            {activeTab === 'dashboard' && (
-              <DashboardOverview
-                transactions={transactions}
-                products={products}
-                mutations={mutations}
-                currentUser={currentUser}
-                coopConfig={coopConfig}
-                onNavigate={(tab) => setActiveTab(tab)}
-                onOpenQuickScan={() => setIsQuickLookupOpen(true)}
-                onViewReceipt={(trx) => setViewingReceiptTrx(trx)}
-              />
-            )}
+            {/* Proteksi Akses Jika Akun Kasir Mengakses Menu Terkunci */}
+            {!isTabAccessibleForUser(activeTab, currentUser) ? (
+              <div className="bg-white rounded-3xl border border-amber-200/90 p-8 sm:p-12 text-center max-w-lg mx-auto shadow-xl my-10 animate-in fade-in zoom-in-95">
+                <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-600 mx-auto flex items-center justify-center mb-4 shadow-xs">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <h2 className="text-xl font-black text-slate-900 mb-2">Akses Menu Terkunci</h2>
+                <p className="text-xs sm:text-sm text-slate-600 mb-4 leading-relaxed">
+                  Akun Kasir (<strong>{currentUser.name}</strong>) hanya memiliki hak akses untuk menu: <strong>Dashboard</strong>, <strong>Kasir / Penjualan</strong>, <strong>Produk</strong>, serta <strong>Stok & Mutasi</strong>.
+                </p>
+                <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-800 font-medium mb-6 text-left flex items-start gap-2">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>Menu <strong>{getPageHeaderTitle(activeTab)}</strong> terkunci dan hanya dapat dibuka melalui akun <strong>Kepala Toko</strong>.</span>
+                </div>
+                <div className="flex flex-col sm:flex-row justify-center gap-3">
+                  <button
+                    onClick={() => setActiveTab('dashboard')}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+                  >
+                    Ke Dashboard
+                  </button>
+                  <button
+                    onClick={() => setAppStage('select-account')}
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    Ganti Akun Kepala Toko
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* 1. Dashboard */}
+                {activeTab === 'dashboard' && (
+                  <DashboardOverview
+                    transactions={transactions}
+                    products={products}
+                    mutations={mutations}
+                    currentUser={currentUser}
+                    coopConfig={coopConfig}
+                    onNavigate={(tab) => handleSelectTab(tab)}
+                    onOpenQuickScan={() => setIsQuickLookupOpen(true)}
+                    onViewReceipt={(trx) => setViewingReceiptTrx(trx)}
+                  />
+                )}
 
             {/* 2. Kasir / POS */}
             {activeTab === 'pos' && (
@@ -920,7 +986,22 @@ export function App() {
                 onPreviewWelcome={() => setAppStage('welcome')}
               />
             )}
+              </>
+            )}
           </div>
+
+          {/* Floating Sleek Emerald Scroll-to-Top Button */}
+          {showScrollTop && (
+            <button
+              id="btn-scroll-to-top"
+              onClick={() => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+              title="Scroll ke atas"
+              aria-label="Scroll ke atas"
+              className="fixed bottom-6 right-6 z-40 p-2.5 sm:p-3 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-950/20 border border-emerald-400/50 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer group"
+            >
+              <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-y-0.5 transition-transform" />
+            </button>
+          )}
         </main>
       </div>
 

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { UserProfile, CoopConfig } from '../../types';
+import React, { useState } from 'react';
+import { UserProfile, CoopConfig, isTabAccessibleForUser } from '../../types';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -17,6 +17,8 @@ import {
   UserCheck,
   LogOut,
   Store,
+  Lock,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -49,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onReturnToWelcome,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [lockedNotice, setLockedNotice] = useState<{ isOpen: boolean; menuName: string } | null>(null);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -159,12 +162,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+            const isAccessible = isTabAccessibleForUser(item.id, currentUser);
+            const isLocked = !isAccessible;
+
             return (
               <button
                 key={item.id}
                 id={`sidebar-nav-${item.id}`}
-                title={item.label}
+                title={isLocked ? `${item.label} (Terkunci - Khusus Kepala Toko)` : item.label}
                 onClick={() => {
+                  if (isLocked) {
+                    setLockedNotice({ isOpen: true, menuName: item.label });
+                    return;
+                  }
                   onSelectTab(item.id);
                   if (onCloseMobile) onCloseMobile();
                 }}
@@ -173,6 +183,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 } ${
                   isActive
                     ? 'neumorphism-sidebar-active text-amber-300 font-extrabold border-l-4 border-amber-300'
+                    : isLocked
+                    ? 'text-emerald-200/70 hover:bg-emerald-800/40 hover:text-white border-l-4 border-transparent opacity-85'
                     : 'text-emerald-100 hover:bg-emerald-600/70 hover:text-white border-l-4 border-transparent'
                 }`}
               >
@@ -181,14 +193,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     isActive ? 'opacity-100 text-amber-300 animate-smooth-jump-5s' : 'opacity-85 group-hover:opacity-100'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 stroke-[2.2] ${isActive ? 'text-amber-300' : 'text-emerald-100 group-hover:text-white'}`} />
+                  <Icon className={`w-5 h-5 stroke-[2.2] ${isActive ? 'text-amber-300' : isLocked ? 'text-emerald-300/80' : 'text-emerald-100 group-hover:text-white'}`} />
                 </div>
                 {!isCollapsed && (
-                  <span className={`truncate ${isActive ? 'text-amber-300 font-extrabold' : 'text-emerald-100 group-hover:text-white font-bold'}`}>
+                  <span className={`truncate ${isActive ? 'text-amber-300 font-extrabold' : isLocked ? 'text-emerald-200/80' : 'text-emerald-100 group-hover:text-white font-bold'}`}>
                     {item.label}
                   </span>
                 )}
-                {item.badge && (
+
+                {/* Lock indicator for locked menu items */}
+                {isLocked ? (
+                  isCollapsed ? (
+                    <span className="absolute top-1 right-1 p-0.5 rounded-full bg-amber-400/30 text-amber-300 ring-1 ring-amber-300/40" title="Terkunci">
+                      <Lock className="w-2.5 h-2.5" />
+                    </span>
+                  ) : (
+                    <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-amber-300/90 font-medium bg-amber-400/20 px-1.5 py-0.5 rounded-md border border-amber-300/30">
+                      <Lock className="w-3 h-3" />
+                      <span className="text-[9px]">Kunci</span>
+                    </span>
+                  )
+                ) : item.badge ? (
                   <span
                     className={`${
                       isCollapsed
@@ -200,7 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     {!isCollapsed && item.badge}
                   </span>
-                )}
+                ) : null}
               </button>
             );
           })}
@@ -311,6 +336,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
       </aside>
+
+      {/* Modal Peringatan Hak Akses Terkunci untuk Kasir */}
+      {lockedNotice?.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 text-slate-800 text-center animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4 shadow-xs">
+              <Lock className="w-7 h-7" />
+            </div>
+            <h3 className="text-base font-black text-slate-900 mb-1.5">
+              Menu {lockedNotice.menuName} Terkunci
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              Akun Kasir (<strong>{currentUser.name}</strong>) hanya memiliki hak akses untuk menu: <strong>Dashboard</strong>, <strong>Kasir / Penjualan</strong>, <strong>Produk</strong>, serta <strong>Stok & Mutasi</strong>.
+            </p>
+            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 text-[11px] text-amber-800 mb-5 text-left flex items-start gap-2">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>Menu <strong>{lockedNotice.menuName}</strong> terkunci dan hanya dapat diakses dengan akun <strong>Kepala Toko</strong>.</span>
+            </div>
+            <div className="space-y-2">
+              {onLogoutOrSwitchScreen && (
+                <button
+                  onClick={() => {
+                    setLockedNotice(null);
+                    onLogoutOrSwitchScreen();
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition cursor-pointer"
+                >
+                  Ganti ke Akun Kepala Toko
+                </button>
+              )}
+              <button
+                onClick={() => setLockedNotice(null)}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

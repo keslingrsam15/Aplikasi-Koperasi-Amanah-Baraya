@@ -157,9 +157,13 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
               <h2 className="text-lg sm:text-xl font-black text-slate-900 mb-2">
                 Akun Kepala Toko
               </h2>
-              <p className="text-xs text-slate-600 font-normal leading-relaxed mb-5">
-                Akses lengkap manajemen produk, stok & mutasi, data anggota, simpan pinjam, laporan keuangan & pengaturan sistem koperasi.
+              <p className="text-xs text-slate-600 font-normal leading-relaxed mb-4">
+                Akses penuh semua fitur sistem: Dashboard grafik, Kasir/Penjualan, Master Produk, Stok & Mutasi, Data Anggota, Simpan Pinjam, Laporan Keuangan, Data Pengguna, dan Pengaturan Koperasi.
               </p>
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-200/80 mb-5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Bisa mengakses semua menu aplikasi tanpa batasan</span>
+              </div>
 
               {/* User Selector for Admins */}
               <div className="space-y-2 mb-5">
@@ -238,16 +242,27 @@ export const AccountSelectionScreen: React.FC<AccountSelectionScreenProps> = ({
                   <ShoppingCart className="w-6 h-6" />
                 </div>
                 <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold text-[10px] uppercase tracking-wide border border-emerald-200">
-                  Kasir POS & Transaksi
+                  AKSES KASIR
                 </span>
               </div>
 
               <h2 className="text-lg sm:text-xl font-black text-slate-900 mb-2">
                 Akun Kasir
               </h2>
-              <p className="text-xs text-slate-600 font-normal leading-relaxed mb-5">
-                Layanan transaksi kasir cepat (POS), pencarian barcode barang, diskon anggota RSUD Al-Mulk, dan cetak struk thermal otomatis.
+              <p className="text-xs text-slate-600 font-normal leading-relaxed mb-3">
+                Hak akses operasional kasir: Menu Dashboard, Kasir / Penjualan, Master Produk, serta Stok & Mutasi. Menu lainnya tetap ditampilkan namun dalam status terkunci.
               </p>
+              
+              <div className="space-y-1.5 mb-4 text-[11px]">
+                <div className="flex items-center gap-1.5 text-emerald-800 bg-emerald-50/90 px-2.5 py-1 rounded-lg border border-emerald-200/60 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Akses: Dashboard, Kasir/Penjualan, Produk, Stok & Mutasi</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-amber-800 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200/60 font-semibold">
+                  <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Menu Lainnya Tetap Muncul Tapi Terkunci</span>
+                </div>
+              </div>
 
               {/* User Selector for Cashiers */}
               <div className="space-y-2 mb-5">

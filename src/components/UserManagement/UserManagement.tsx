@@ -35,21 +35,23 @@ interface PermissionOption {
 }
 
 const AVAILABLE_PERMISSIONS: PermissionOption[] = [
+  { id: 'dashboard', label: 'Dashboard & Grafik', desc: 'Akses ringkasan penjualan, grafik aktivitas, dan struk transaksi' },
   { id: 'pos', label: 'Kasir & Transaksi', desc: 'Akses menu kasir, input belanja, scan barcode, dan cetak struk' },
-  { id: 'products', label: 'Master Produk', desc: 'Tambah, ubah data barang, atur harga jual & harga modal' },
-  { id: 'barcodes', label: 'Cetak Barcode', desc: 'Cetak label barcode stiker thermal dan kertas label A4' },
+  { id: 'products', label: 'Master Produk', desc: 'Akses katalog produk, harga jual & harga modal barang' },
   { id: 'stock', label: 'Stok & Mutasi', desc: 'Kelola restock barang masuk, barang keluar, dan opname fisik' },
-  { id: 'reports', label: 'Laporan Keuangan', desc: 'Lihat rekap omset penjualan, estimasi laba kotor, dan riwayat kasir' },
-  { id: 'users', label: 'Kelola Pengguna', desc: 'Akses menu data pengguna dan pengaturan hak akses peran' },
-  { id: 'settings', label: 'Pengaturan Sistem', desc: 'Atur identitas koperasi, printer thermal, dan sinkronisasi cloud Supabase' },
+  { id: 'members', label: 'Data Anggota (Terkunci)', desc: 'Manajemen database anggota koperasi RSUD Al-Mulk (Khusus Kepala Toko)' },
+  { id: 'simpanpinjam', label: 'Simpan Pinjam (Terkunci)', desc: 'Pengelolaan simpanan dan pinjaman anggota (Khusus Kepala Toko)' },
+  { id: 'reports', label: 'Laporan Keuangan (Terkunci)', desc: 'Lihat rekap omset penjualan & laba kotor (Khusus Kepala Toko)' },
+  { id: 'users', label: 'Kelola Pengguna (Terkunci)', desc: 'Akses data pengguna dan hak akses peran (Khusus Kepala Toko)' },
+  { id: 'settings', label: 'Pengaturan Sistem (Terkunci)', desc: 'Atur identitas koperasi dan sinkronisasi cloud (Khusus Kepala Toko)' },
   { id: 'delete_users', label: 'Otoritas Hapus Akun', desc: 'Hak khusus Kepala Toko untuk menghapus akun pengguna' },
 ];
 
 const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  admin: ['pos', 'products', 'barcodes', 'stock', 'reports', 'users', 'settings', 'delete_users'],
-  kasir: ['pos', 'products', 'barcodes'],
-  pengurus: ['reports', 'stock', 'users', 'settings'],
-  gudang: ['products', 'barcodes', 'stock'],
+  admin: ['dashboard', 'pos', 'products', 'stock', 'members', 'simpanpinjam', 'reports', 'users', 'settings', 'delete_users'],
+  kasir: ['dashboard', 'pos', 'products', 'stock'],
+  pengurus: ['dashboard', 'reports', 'members', 'simpanpinjam', 'stock', 'users', 'settings'],
+  gudang: ['dashboard', 'products', 'stock'],
 };
 
 export const UserManagement: React.FC<UserManagementProps> = ({
