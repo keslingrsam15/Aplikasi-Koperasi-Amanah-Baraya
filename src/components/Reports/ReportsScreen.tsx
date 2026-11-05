@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import {
   Transaction,
   Product,
@@ -34,6 +34,11 @@ import {
   Calendar,
   BookOpen,
   Save,
+  LayoutGrid,
+  FileText,
+  Maximize2,
+  Plus,
+  Minus,
 } from 'lucide-react';
 
 interface ReportsScreenProps {
@@ -101,9 +106,46 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [isSavingReport, setIsSavingReport] = useState<boolean>(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
+  const [zoomLevel, setZoomLevel] = useState<number>(() => {
+    try {
+      const savedZoom = localStorage.getItem('koperasi_rsud_lpj_zoom_level');
+      if (savedZoom) {
+        const val = Number(savedZoom);
+        if (!isNaN(val) && val >= 45 && val <= 130) return val;
+      }
+    } catch {
+      // fallback
+    }
+    return 100;
+  });
+  const [viewMode, setViewMode] = useState<'auto' | 'single' | 'double'>('auto');
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('koperasi_rsud_lpj_zoom_level', String(zoomLevel));
+    } catch {
+      // ignore
+    }
+  }, [zoomLevel]);
+
+  const viewportRef = useRef<HTMLDivElement>(null);
   const reportContainerRef = useRef<HTMLDivElement>(null);
   const pendingEditsRef = useRef<Record<string, string>>({});
+
+  const fitTwoPageLayout = useCallback(() => {
+    setViewMode('double');
+    if (viewportRef.current) {
+      const availableWidth = viewportRef.current.clientWidth - 56;
+      // Two F4 sheets (21.5cm x 2 = ~1625px + gap ~20px = ~1645px)
+      const calculatedScale = Math.min(56, Math.max(40, Math.floor((availableWidth / 1650) * 100)));
+      setZoomLevel(calculatedScale);
+    } else {
+      setZoomLevel(50);
+    }
+  }, []);
+
+  const isTwoPageLayout =
+    viewMode === 'double' || (viewMode === 'auto' && zoomLevel <= 75);
 
   const [lpjParams, setLpjParams] = useState<LpjReportParams>(() => {
     try {
@@ -408,18 +450,43 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
 
   return (
     <div className="space-y-6 pb-14">
-      {/* Print F4 Page Rule (21.5cm x 33.0cm, Margin 2.5cm top/right/bottom/left) */}
+      {/* Print F4 Page Rule (21.5cm x 33.0cm, Margin 2.5cm top/right/bottom/left) & Screen 2-Page Layout */}
       <style>{`
+        .lpj-sheets-flow.is-two-page .f4-sheet-portrait,
+        .lpj-sheets-flow.is-two-page .f4-cover-sheet {
+          margin: 0 !important;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.45), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
+        }
+        .lpj-sheets-flow.is-two-page .f4-sheet-landscape {
+          margin: 0 !important;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.45), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
+        }
         @media print {
           @page {
             size: 215mm 330mm;
             margin: 25mm 25mm 25mm 25mm;
           }
+          @page landscape-sheet {
+            size: 330mm 215mm;
+            margin: 20mm 25mm 20mm 25mm;
+          }
           body {
             background: #ffffff !important;
           }
-          .f4-sheet-portrait,
-          .f4-sheet-landscape {
+          .lpj-outer-viewport {
+            background: transparent !important;
+            padding: 0 !important;
+          }
+          .lpj-zoom-scaler {
+            transform: none !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          .lpj-sheets-flow {
+            display: block !important;
+          }
+          .f4-sheet-portrait {
+            page: auto;
             box-shadow: none !important;
             border: none !important;
             margin: 0 !important;
@@ -427,6 +494,18 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             max-width: 100% !important;
             width: 100% !important;
             page-break-after: always;
+            page-break-inside: avoid;
+          }
+          .f4-sheet-landscape {
+            page: landscape-sheet;
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            page-break-after: always;
+            page-break-inside: avoid;
           }
           .f4-cover-sheet {
             box-shadow: none !important;
@@ -436,6 +515,9 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             width: 215mm !important;
             height: 330mm !important;
             page-break-after: always;
+          }
+          table tr {
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
@@ -670,11 +752,41 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
           WORD-LIKE DIRECT EDITING (contentEditable) ENABLED ON ALL SHEETS
       ================================================================================= */}
       <div
-        key={`lpj-canvas-${periodKey}`}
-        ref={reportContainerRef}
-        onInput={handleReportInput}
-        className="space-y-8 print:space-y-0"
+        ref={viewportRef}
+        className={`lpj-outer-viewport w-full transition-colors duration-300 rounded-3xl ${
+          zoomLevel <= 85 || isTwoPageLayout
+            ? 'bg-slate-100/90 border border-slate-200/90 shadow-inner p-2 sm:p-4 lg:p-6 overflow-x-auto'
+            : 'bg-transparent'
+        }`}
       >
+        <div
+          className="lpj-scaler-bounds mx-auto overflow-visible relative"
+          style={{
+            width: isTwoPageLayout ? `${1650 * (zoomLevel / 100)}px` : '100%',
+            maxWidth: isTwoPageLayout ? '100%' : undefined,
+          }}
+        >
+          <div
+            className={`lpj-zoom-scaler transition-transform duration-150 ease-out flex flex-col ${
+              isTwoPageLayout ? 'items-start' : 'items-center'
+            }`}
+            style={{
+              transform: zoomLevel !== 100 ? `scale(${zoomLevel / 100})` : undefined,
+              transformOrigin: isTwoPageLayout ? 'top left' : 'top center',
+              width: isTwoPageLayout ? '1650px' : '100%',
+              minWidth: isTwoPageLayout ? '1650px' : undefined,
+            }}
+          >
+          <div
+            key={`lpj-canvas-${periodKey}`}
+            ref={reportContainerRef}
+            onInput={handleReportInput}
+            className={`lpj-sheets-flow w-full print:space-y-0 print:block ${
+              isTwoPageLayout
+                ? 'is-two-page flex flex-wrap justify-center items-start gap-4 sm:gap-6'
+                : 'space-y-8 flex flex-col items-center'
+            }`}
+          >
         {/* ==================== SECTION I: PAGES 1 - 7 ==================== */}
         {(activeSection === 'ALL' || activeSection === 'COVER_TATIB') && (
           <>
@@ -2848,13 +2960,112 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             ))}
           </>
         )}
+          </div>
+        </div>
       </div>
+    </div>
 
-      {/* Floating Save Button at Bottom-Right Corner Integrated with Supabase */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2 print:hidden">
+      {/* Floating Vertical Zoom Bar on Right Edge - Slim Emerald Theme */}
+      <aside
+        aria-label="Kontrol Zoom dan Tata Letak Laporan"
+        className="fixed right-2 sm:right-3.5 top-1/2 -translate-y-1/2 z-40 bg-white/95 backdrop-blur-md border border-emerald-600/30 text-slate-700 rounded-full py-2 px-1 flex flex-col items-center gap-1 shadow-xl shadow-emerald-950/15 select-none print:hidden transition-all duration-200"
+      >
+        {/* Button 1: Mode 2 Halaman (Side-by-side, auto-fitted full screen) */}
+        <button
+          type="button"
+          onClick={fitTwoPageLayout}
+          title="Tampilan 2 Halaman Berdampingan (Penuh Layar Proporsional)"
+          className={`p-1 rounded-full transition-all duration-150 cursor-pointer ${
+            isTwoPageLayout
+              ? 'text-white bg-emerald-700 shadow-xs ring-1 ring-emerald-500/50'
+              : 'text-slate-600 hover:text-emerald-800 hover:bg-emerald-50'
+          }`}
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Button 2: Mode 1 Halaman (Single column) */}
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode('single');
+            setZoomLevel(100);
+          }}
+          title="Tampilan 1 Halaman Tunggal (100%)"
+          className={`p-1 rounded-full transition-all duration-150 cursor-pointer ${
+            viewMode === 'single'
+              ? 'text-white bg-emerald-700 shadow-xs ring-1 ring-emerald-500/50'
+              : 'text-slate-600 hover:text-emerald-800 hover:bg-emerald-50'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Button 3: Fit to Screen / Toggle */}
+        <button
+          type="button"
+          onClick={() => {
+            if (isTwoPageLayout) {
+              setViewMode('single');
+              setZoomLevel(100);
+            } else {
+              fitTwoPageLayout();
+            }
+          }}
+          title="Sesuaikan Ukuran Layar / Toggle 1 & 2 Halaman"
+          className="p-1 rounded-full text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 transition-all duration-150 cursor-pointer"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+        </button>
+
+        <div className="w-3.5 h-[1px] bg-emerald-200/80 my-0.5" />
+
+        {/* Button 4: Zoom In (+) */}
+        <button
+          type="button"
+          onClick={() => setZoomLevel((prev) => Math.min(130, prev + 5))}
+          title="Perbesar (Zoom In)"
+          className="p-1 rounded-full text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 active:scale-90 transition-all cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Thinner Vertical Range Slider */}
+        <div className="relative py-1 flex items-center justify-center h-20 w-4">
+          <input
+            type="range"
+            min="45"
+            max="130"
+            step="5"
+            value={zoomLevel}
+            onChange={(e) => setZoomLevel(Number(e.target.value))}
+            aria-label="Pengatur Skala Zoom Laporan"
+            className="accent-emerald-700 w-16 h-1 -rotate-90 cursor-pointer rounded-full bg-slate-200"
+            style={{ transformOrigin: 'center' }}
+          />
+        </div>
+
+        {/* Button 5: Zoom Out (-) */}
+        <button
+          type="button"
+          onClick={() => setZoomLevel((prev) => Math.max(45, prev - 5))}
+          title="Perkecil (Zoom Out)"
+          className="p-1 rounded-full text-slate-600 hover:text-emerald-800 hover:bg-emerald-50 active:scale-90 transition-all cursor-pointer"
+        >
+          <Minus className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Percentage Label */}
+        <span className="text-[9px] font-black text-emerald-800 font-mono tracking-tighter mt-0.5">
+          {zoomLevel}%
+        </span>
+      </aside>
+
+      {/* Floating Save Button at Bottom-Right Corner Integrated with Supabase (Emerald Theme) */}
+      <div className="fixed bottom-6 right-12 sm:right-16 z-40 flex flex-col items-end gap-2 print:hidden">
         {saveSuccessNotice && (
-          <div className="px-3.5 py-2 rounded-xl bg-slate-900/95 text-white text-xs font-bold shadow-lg flex items-center gap-2 border border-emerald-500/40">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="px-3.5 py-2 rounded-xl bg-emerald-900/95 text-white text-xs font-bold shadow-xl flex items-center gap-2 border border-emerald-400/50">
+            <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
             <span>Perubahan laporan tersimpan ke Supabase</span>
           </div>
         )}
@@ -2865,16 +3076,16 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
           disabled={isSavingReport}
           onClick={handleSaveReportChanges}
           title="Simpan perubahan laporan resmi ke Supabase"
-          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-xl transition-all active:scale-95 cursor-pointer border ${
+          className={`px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-xl transition-all active:scale-95 cursor-pointer border ${
             hasUnsavedChanges
-              ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-400 shadow-emerald-950/25 ring-2 ring-emerald-400/50'
-              : 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-500/40 shadow-emerald-950/20'
+              ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-300 shadow-amber-950/25 ring-2 ring-amber-300/60'
+              : 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-500/60 shadow-emerald-950/20'
           }`}
         >
-          <Save className="w-4 h-4 shrink-0" />
+          <Save className="w-4 h-4 text-emerald-100 shrink-0" />
           <span>{isSavingReport ? 'Menyimpan...' : 'Simpan Data'}</span>
           {hasUnsavedChanges && (
-            <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
           )}
         </button>
       </div>

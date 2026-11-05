@@ -887,16 +887,16 @@ export function calculateLpjRealtimeData(
 
 function renderPageFooterHtml(pageNo: number): string {
   return `
-  <table style="width:100%;border:none;border-collapse:collapse;margin-top:18pt;">
-    <tr>
-      <td style="border:none;text-align:right;vertical-align:middle;font-size:9pt;color:#222;padding-right:8pt;">
-        KOPERASI AMANAH BARAYA
-      </td>
-      <td style="border:none;width:28pt;background-color:#70ad47;color:#ffffff;font-weight:bold;text-align:center;vertical-align:middle;padding:4pt 0;font-size:10pt;">
-        ${pageNo}
-      </td>
-    </tr>
-  </table>`;
+  <div style="page-break-inside:avoid;margin-top:10pt;">
+    <table style="width:100%;border:none;border-collapse:collapse;">
+      <tr>
+        <td style="border:none;text-align:right;vertical-align:middle;font-size:9pt;color:#222;padding-right:8pt;">
+          KOPERASI AMANAH BARAYA
+        </td>
+        <td style="border:none;width:28pt;background-color:#70ad47;color:#ffffff;font-weight:bold;text-align:center;vertical-align:middle;padding:3pt 0;font-size:9.5pt;">${pageNo}</td>
+      </tr>
+    </table>
+  </div>`;
 }
 
 export interface LpjAppendixSheet<T> {
@@ -906,10 +906,10 @@ export interface LpjAppendixSheet<T> {
   isLastPage: boolean;
 }
 
-export const LPJ_LANDSCAPE_FIRST_PAGE_ROWS = 28;
-export const LPJ_LANDSCAPE_NEXT_PAGE_ROWS = 32;
-export const LPJ_PORTRAIT_FIRST_PAGE_ROWS = 42;
-export const LPJ_PORTRAIT_NEXT_PAGE_ROWS = 48;
+export const LPJ_LANDSCAPE_FIRST_PAGE_ROWS = 24;
+export const LPJ_LANDSCAPE_NEXT_PAGE_ROWS = 26;
+export const LPJ_PORTRAIT_FIRST_PAGE_ROWS = 24;
+export const LPJ_PORTRAIT_NEXT_PAGE_ROWS = 25;
 
 /**
  * Memecah baris data tabel lampiran LPJ ke halaman-halaman F4 dengan kapasitas maksimal
@@ -1118,7 +1118,6 @@ export function generateLpjWordHtml(
       <col style="width:16.0%;" />
     </colgroup>`;
 
-
   return `
 <!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -1147,42 +1146,63 @@ export function generateLpjWordHtml(
       size: 21.5cm 33.0cm;
       margin: 2.5cm 2.5cm 2.5cm 2.5cm;
       mso-page-orientation: portrait;
+      mso-header-margin: 1.5cm;
+      mso-footer-margin: 1.5cm;
     }
     @page SectionLandscapeF4 {
       size: 33.0cm 21.5cm;
-      margin: 2.5cm 2.5cm 2.5cm 2.5cm;
+      margin: 2.0cm 2.5cm 2.0cm 2.5cm;
       mso-page-orientation: landscape;
+      mso-header-margin: 1.2cm;
+      mso-footer-margin: 1.2cm;
     }
-    div.SectionCoverF4 { page: SectionCoverF4; }
-    div.SectionPortraitF4 { page: SectionPortraitF4; }
-    div.SectionLandscapeF4 { page: SectionLandscapeF4; }
+    div.SectionCoverF4 { page: SectionCoverF4; mso-element: section; }
+    div.SectionPortraitF4 { page: SectionPortraitF4; mso-element: section; }
+    div.SectionLandscapeF4 { page: SectionLandscapeF4; mso-element: section; }
     body {
       font-family: Calibri, "Segoe UI", Arial, sans-serif;
       font-size: 11.5pt;
-      line-height: 1.5;
+      line-height: 1.45;
       color: #000000;
     }
     h1, h2, h3, h4 {
-      margin: 6pt 0;
+      margin: 5pt 0;
       font-weight: bold;
     }
     p {
-      margin: 6pt 0;
+      margin: 5pt 0;
     }
     .center { text-align: center; }
     .right { text-align: right; }
     .justify { text-align: justify; text-indent: 28pt; }
     .justify-noindent { text-align: justify; }
-    .page-break { page-break-before: always; }
+    .page-break {
+      page-break-before: always !important;
+      mso-break-type: section-break;
+      clear: both;
+    }
+    table {
+      page-break-inside: auto;
+    }
+    tr {
+      page-break-inside: avoid !important;
+      mso-line-break-inside: avoid !important;
+    }
+    thead {
+      display: table-header-group;
+    }
+    tfoot {
+      display: table-footer-group;
+    }
     table.formal {
       width: 100%;
       border-collapse: collapse;
-      margin: 8pt 0;
+      margin: 7pt 0;
       font-size: 10.5pt;
     }
     table.formal th, table.formal td {
       border: 1px solid #000000;
-      padding: 4pt 6pt;
+      padding: 3.5pt 5pt;
       vertical-align: middle;
     }
     table.formal th {
@@ -1194,12 +1214,13 @@ export function generateLpjWordHtml(
       width: 100%;
       table-layout: fixed;
       border-collapse: collapse;
-      margin: 6pt 0;
-      font-size: 7pt;
+      margin: 4pt 0;
+      font-size: 6.8pt;
+      line-height: 1.15;
     }
     table.lampiran th, table.lampiran td {
       border: 1px solid #000000;
-      padding: 2pt 3pt;
+      padding: 1.8pt 2.5pt;
       vertical-align: middle;
     }
     table.lampiran th {
@@ -1264,6 +1285,7 @@ export function generateLpjWordHtml(
 
 <!-- ==================== HALAMAN 2: KATA PENGANTAR ==================== -->
 <div class="SectionPortraitF4">
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <h3 class="center" style="font-size:12.5pt;">KATA PENGANTAR</h3>
   <br/>
@@ -1299,6 +1321,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(2)}
 
   <!-- ==================== HALAMAN 3: SUSUNAN ACARA ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <h3 class="center" style="font-size:12.5pt;">SUSUNAN ACARA</h3>
   <br/>
@@ -1323,6 +1346,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(3)}
 
   <!-- ==================== HALAMAN 4: PENDAHULUAN RAT ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <h3 class="center" style="font-size:12.5pt;">Rapat Anggota Tahunan (RAT)<br/>Tahun Buku ${params.tahunBuku}</h3>
   <br/>
@@ -1348,6 +1372,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(4)}
 
   <!-- ==================== HALAMAN 5: TATA TERTIB RAT (BAB I - BAB III) ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <h3 class="center" style="font-size:12pt;">TATA TERTIB RAPAT ANGGOTA TAHUNAN (RAT)<br/>TAHUN BUKU ${params.tahunBuku}</h3>
   <br/>
@@ -1373,6 +1398,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(5)}
 
   <!-- ==================== HALAMAN 6: TATA TERTIB RAT (BAB IV - BAB VII) ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <h4 class="center">BAB IV<br/>KEWAJIBAN DAN HAK PESERTA<br/>Pasal 4</h4>
   <ol type="a" style="margin-left:18pt;">
@@ -1397,6 +1423,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(6)}
 
   <!-- ==================== HALAMAN 7: TATA TERTIB RAT (BAB VII - BAB IX) ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <h4 class="center">BAB VII<br/>SAHNYA KEPUTUSAN RAPAT<br/>Pasal 7</h4>
   <ol type="a" style="margin-left:18pt;">
@@ -1424,6 +1451,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(7)}
 
   <!-- ==================== HALAMAN 8: LAPORAN PERTANGGUNG JAWABAN PENGURUS ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <h3 class="center" style="font-size:12pt;">
     LAPORAN PERTANGGUNG JAWABAN<br/>
@@ -1461,6 +1489,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(8)}
 
   <!-- ==================== HALAMAN 9: d. KEANGGOTAAN & TABEL 1 ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <p style="margin-left:34pt;">d. &nbsp;Keanggotaan</p>
   <p class="center" style="font-size:10.5pt;">Tabel 1: Perkembangan Data Anggota Tahun ${prevTahunBuku} - ${params.tahunBuku}</p>
@@ -1508,6 +1537,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(9)}
 
   <!-- ==================== HALAMAN 10: 2. BIDANG USAHA (a. USP & TABEL 2) ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <p style="margin-left:18pt;"><strong>2. &nbsp;BIDANG USAHA</strong></p>
   <p style="margin-left:34pt;"><strong>a. &nbsp;Unit Usaha Simpan Pinjam (USP)</strong></p>
@@ -1567,6 +1597,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(10)}
 
   <!-- ==================== HALAMAN 11: b. UNIT USAHA WASERDA, TABEL 3 & 3. BIDANG PERMODALAN ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <p style="margin-left:34pt;"><strong>b. &nbsp;Unit Usaha Waserda</strong></p>
   <p class="center" style="font-size:10.5pt;">Tabel 3 : Perkembangan Unit Usaha Waserda tahun ${prevTahunBuku} - ${params.tahunBuku}</p>
@@ -1636,6 +1667,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(11)}
 
   <!-- ==================== HALAMAN 12: TABEL 4 PERKEMBANGAN JUMLAH SIMPANAN ANGGOTA ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <table class="no-border" style="margin-left:45pt;width:85%;">
     <tr><td style="width:160pt;">&#10146; &nbsp;Simpanan pokok</td><td>: Rp. 200.000,- / anggota</td></tr>
@@ -1706,6 +1738,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(12)}
 
   <!-- ==================== HALAMAN 13: 4. DANA KESEJAHTERAAN (TABEL 5) & III. REALISASI PENDAPATAN DAN BELANJA (TABEL 6) ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <p class="justify-noindent" style="margin-left:50pt;">
     koperasi Amanah Baraya dengan menggunakan simpanan karyawisata masing masing, sehingga jumlah simpanan karyawisata berkurang.
@@ -1827,6 +1860,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(13)}
 
   <!-- ==================== HALAMAN 14: IV. EVALUASI AKHIR KEGIATAN (a & b.1-5) ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <p><strong>IV. &nbsp;&nbsp;EVALUASI AKHIR KEGIATAN</strong></p>
   <p class="justify-noindent" style="margin-left:34pt;">
@@ -1854,6 +1888,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(14)}
 
   <!-- ==================== HALAMAN 15: LANJUTAN b.6-8 & c. CATATAN BIDANG USAHA (1. USP) ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <ol start="6" style="margin-left:42pt;">
     <li>Dana simpanan poko diusulkan penambahan menjadi Rp. 300.000;00</li>
@@ -1879,6 +1914,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(15)}
 
   <!-- ==================== HALAMAN 16: d. UNIT WASERDA, e. RAPB 2026 & V. PENUTUP ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <p style="margin-left:24pt;"><strong>d. &nbsp;Unit Waserda</strong></p>
   <ul style="margin-left:42pt;">
@@ -1908,6 +1944,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(16)}
 
   <!-- ==================== HALAMAN 17: LEMBAR PENGESAHAN PENGURUS & PENGAWAS ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <div class="center" style="font-weight:bold;margin-top:20pt;">
     Sukabumi, ${params.tanggalRat}<br/>
@@ -1961,6 +1998,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(17)}
 
   <!-- ==================== HALAMAN 18: PERHITUNGAN HASIL USAHA (LABA/RUGI) ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <div class="center" style="font-size:11.5pt;margin-bottom:18pt;">
     PERHITUNGAN HASIL USAHA (LABA/RUGI)<br/>
@@ -2052,6 +2090,7 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(18)}
 
   <!-- ==================== HALAMAN 19: PEMBAGIAN SURPLUS HASIL USAHA ==================== -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   <div class="center" style="font-size:11.5pt;margin-bottom:18pt;">
     PEMBAGIAN SURPLUS HASIL USAHA<br/>
@@ -2187,6 +2226,7 @@ export function generateLpjWordHtml(
 </div>
 
 <!-- ==================== LAMPIRAN LANDSCAPE F4 (REKAP SIMPANAN & SISA HUTANG + REKAP SHU, MARGIN 2,5 CM) ==================== -->
+<br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
 <div class="SectionLandscapeF4">
   ${(() => {
     const debtPages = paginateAppendixTable(
@@ -2209,6 +2249,7 @@ export function generateLpjWordHtml(
       .map(
         (sheet) => `
   <!-- HALAMAN ${sheet.pageNo} -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   ${
     sheet.showTitleAndHeader
@@ -2278,6 +2319,7 @@ export function generateLpjWordHtml(
       .map(
         (sheet) => `
   <!-- HALAMAN ${sheet.pageNo} -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   ${
     sheet.showTitleAndHeader
@@ -2342,6 +2384,7 @@ export function generateLpjWordHtml(
 </div>
 
 <!-- ==================== LAMPIRAN TANDA TERIMA SHU ANGGOTA (PORTRAIT F4, MARGIN 2,5 CM) ==================== -->
+<br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
 <div class="SectionPortraitF4">
   ${(() => {
     const debtPagesCount = paginateAppendixTable(
@@ -2371,6 +2414,7 @@ export function generateLpjWordHtml(
       .map(
         (sheet) => `
   <!-- HALAMAN ${sheet.pageNo} -->
+  <br clear="all" style="page-break-before:always;mso-break-type:section-break;" />
   <div class="page-break"></div>
   ${
     sheet.showTitleAndHeader
