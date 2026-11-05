@@ -539,6 +539,23 @@ export function App() {
       });
     }
 
+    // 4. Simpanan Wisata / Karyawisata
+    if ((newMem.simpananWisata || 0) > 0) {
+      newSavings.push({
+        id: `SMP-${Date.now() + 3}-WISATA`,
+        receiptNumber: `SMP-WST-${newMem.memberNumber.slice(-4)}`,
+        memberId: newMem.id,
+        memberNumber: newMem.memberNumber,
+        memberName: newMem.name,
+        type: 'wisata',
+        transactionType: 'setor',
+        amount: newMem.simpananWisata || 0,
+        date: nowIso,
+        notes: 'Setoran Simpanan Karyawisata Awal Pendaftaran Anggota',
+        operator: currentUser.name || 'Petugas Koperasi',
+      });
+    }
+
     if (newSavings.length > 0) {
       setSavingsRecords((prev) => [...newSavings, ...prev]);
       newSavings.forEach((s) => saveSavingsToSupabase(s));
@@ -580,6 +597,8 @@ export function App() {
           updatedMem.simpananWajib = Math.max(0, mem.simpananWajib + delta);
         } else if (newRecord.type === 'sukarela') {
           updatedMem.simpananSukarela = Math.max(0, mem.simpananSukarela + delta);
+        } else if (newRecord.type === 'wisata') {
+          updatedMem.simpananWisata = Math.max(0, (mem.simpananWisata || 0) + delta);
         }
 
         saveMemberToSupabase(updatedMem);
@@ -956,7 +975,7 @@ export function App() {
               />
             )}
 
-            {/* 7. Laporan (Penjualan, SHU, Stok) */}
+            {/* 7. Laporan (LPJ RAT Resmi & Real-Time) */}
             {activeTab === 'reports' && (
               <ReportsScreen
                 transactions={transactions}
@@ -964,6 +983,8 @@ export function App() {
                 members={members}
                 savingsRecords={savingsRecords}
                 loans={loans}
+                mutations={mutations}
+                users={users}
                 coopConfig={coopConfig}
               />
             )}

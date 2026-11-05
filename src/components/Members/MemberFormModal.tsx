@@ -75,15 +75,18 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
   const [formData, setFormData] = useState<Partial<Member>>({
     memberNumber: '',
     name: '',
+    gender: 'P',
     nikOrNip: '',
     unitKerja: '',
     phone: '',
     email: '',
     joinDate: new Date().toISOString().slice(0, 10),
     status: 'active',
-    simpananPokok: 100000,
-    simpananWajib: 50000,
+    simpananPokok: 200000,
+    simpananWajib: 30000,
     simpananSukarela: 0,
+    simpananWisata: 20000,
+    kekuranganKaryawisata: 0,
     address: '',
     notes: '',
   });
@@ -108,15 +111,18 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
       setFormData({
         memberNumber: `ANG-${year}-${nextSeq}`,
         name: '',
+        gender: 'P',
         nikOrNip: '',
         unitKerja: '',
         phone: '',
         email: '',
         joinDate: new Date().toISOString().slice(0, 10),
         status: 'active',
-        simpananPokok: 100000,
-        simpananWajib: 50000,
+        simpananPokok: 200000,
+        simpananWajib: 30000,
         simpananSukarela: 0,
+        simpananWisata: 20000,
+        kekuranganKaryawisata: 0,
         address: '',
         notes: '',
       });
@@ -183,6 +189,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
       id: memberToEdit?.id || `MEM-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       memberNumber: finalMemberNumber,
       name: formData.name.trim(),
+      gender: (formData.gender as 'L' | 'P') || 'P',
       nikOrNip: formData.nikOrNip?.trim() || undefined,
       unitKerja: finalUnit,
       phone: formData.phone?.trim() || undefined,
@@ -192,6 +199,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
       simpananPokok: Math.max(0, Number(formData.simpananPokok || 0)),
       simpananWajib: Math.max(0, Number(formData.simpananWajib || 0)),
       simpananSukarela: Math.max(0, Number(formData.simpananSukarela || 0)),
+      simpananWisata: Math.max(0, Number(formData.simpananWisata || 0)),
+      kekuranganKaryawisata: Math.max(0, Number(formData.kekuranganKaryawisata || 0)),
       address: formData.address?.trim() || undefined,
       notes: formData.notes?.trim() || undefined,
       updatedAt: new Date().toISOString(),
@@ -231,19 +240,35 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          {/* Nama Lengkap Anggota (Kolom Nomor Anggota telah dihilangkan sesuai permintaan) */}
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">
-              Nama Lengkap Anggota <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.name || ''}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Silahkan masukan nama lengkap"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-            />
+          {/* Nama Lengkap & Jenis Kelamin Anggota */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">
+                Nama Lengkap Anggota <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name || ''}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Silahkan masukan nama lengkap"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Jenis Kelamin:
+              </label>
+              <select
+                value={formData.gender || 'P'}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'L' | 'P' })}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500 text-xs"
+              >
+                <option value="P">Perempuan</option>
+                <option value="L">Laki-Laki</option>
+              </select>
+            </div>
           </div>
 
           {/* Baris 2: NIP/NIK & No. HP / WhatsApp */}
@@ -375,7 +400,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               <span className="text-sm">Saldo Simpanan Koperasi (Rupiah)</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 mb-1 text-[11px]">
                   Simpanan Pokok:
@@ -391,7 +416,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                     className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Dibayar saat awal masuk</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Rp 200.000 / anggota</span>
               </div>
 
               <div>
@@ -409,7 +434,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                     className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Iuran rutin bulanan</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Rp 30.000 / bln</span>
               </div>
 
               <div>
@@ -427,7 +452,25 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                     className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <span className="text-[10px] text-slate-500 block mt-0.5">Tabungan bebas/fleksibel</span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Sesuai kemampuan</span>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                  Simpanan Karyawisata:
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-2 text-slate-400 font-bold">Rp</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={formData.simpananWisata ?? 0}
+                    onChange={(e) => setFormData({ ...formData, simpananWisata: parseFloat(e.target.value) || 0 })}
+                    className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <span className="text-[10px] text-slate-500 block mt-0.5">Rp 20.000 / bln</span>
               </div>
             </div>
 
@@ -436,7 +479,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               {(
                 Number(formData.simpananPokok || 0) +
                 Number(formData.simpananWajib || 0) +
-                Number(formData.simpananSukarela || 0)
+                Number(formData.simpananSukarela || 0) +
+                Number(formData.simpananWisata || 0)
               ).toLocaleString('id-ID')}
             </div>
           </div>

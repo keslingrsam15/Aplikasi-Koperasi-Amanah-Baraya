@@ -69,7 +69,8 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
   const totalPokok = members.reduce((sum, m) => sum + m.simpananPokok, 0);
   const totalWajib = members.reduce((sum, m) => sum + m.simpananWajib, 0);
   const totalSukarela = members.reduce((sum, m) => sum + m.simpananSukarela, 0);
-  const totalAll = totalPokok + totalWajib + totalSukarela;
+  const totalWisata = members.reduce((sum, m) => sum + (m.simpananWisata || 0), 0);
+  const totalAll = totalPokok + totalWajib + totalSukarela + totalWisata;
 
   // Filtered Records
   const filteredRecords = savingsRecords
@@ -119,6 +120,7 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
       if (savingsType === 'sukarela') maxAvailable = currentMember.simpananSukarela;
       else if (savingsType === 'wajib') maxAvailable = currentMember.simpananWajib;
       else if (savingsType === 'pokok') maxAvailable = currentMember.simpananPokok;
+      else if (savingsType === 'wisata') maxAvailable = currentMember.simpananWisata || 0;
 
       if (amount > maxAvailable) {
         alert(
@@ -180,6 +182,7 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
       [`Total Simpanan Pokok: ${formatRupiah(totalPokok)}`],
       [`Total Simpanan Wajib: ${formatRupiah(totalWajib)}`],
       [`Total Simpanan Sukarela: ${formatRupiah(totalSukarela)}`],
+      [`Total Simpanan Karyawisata: ${formatRupiah(totalWisata)}`],
       [`Total Seluruh Simpanan: ${formatRupiah(totalAll)}`],
       [],
       headers,
@@ -190,7 +193,7 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
   return (
     <div className="space-y-6">
       {/* Metrics Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-gradient-to-br from-emerald-600 to-teal-700 p-5 rounded-3xl text-white shadow-md">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-100 uppercase tracking-wider">
@@ -200,7 +203,7 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
               <PiggyBank className="w-5 h-5 text-white" />
             </div>
           </div>
-          <div className="text-2xl font-black mt-2 text-white">{formatRupiah(totalAll)}</div>
+          <div className="text-xl font-black mt-2 text-white tabular-nums">{formatRupiah(totalAll)}</div>
           <div className="text-[11px] text-emerald-100/80 mt-1">
             Dari {members.length} anggota RSUD terdaftar
           </div>
@@ -213,8 +216,8 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
               <span className="text-xs font-bold">P</span>
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">{formatRupiah(totalPokok)}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Setoran awal saat masuk anggota</div>
+          <div className="text-xl font-black text-slate-900 mt-2 tabular-nums">{formatRupiah(totalPokok)}</div>
+          <div className="text-[11px] text-slate-400 mt-1">Setoran awal anggota</div>
         </div>
 
         <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
@@ -224,8 +227,8 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
               <span className="text-xs font-bold">W</span>
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">{formatRupiah(totalWajib)}</div>
-          <div className="text-[11px] text-slate-400 mt-1">Iuran rutin bulanan anggota</div>
+          <div className="text-xl font-black text-slate-900 mt-2 tabular-nums">{formatRupiah(totalWajib)}</div>
+          <div className="text-[11px] text-slate-400 mt-1">Iuran rutin bulanan</div>
         </div>
 
         <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
@@ -235,10 +238,23 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
               <span className="text-xs font-bold">S</span>
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">
+          <div className="text-xl font-black text-slate-900 mt-2 tabular-nums">
             {formatRupiah(totalSukarela)}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Dapat disetor & ditarik sewaktu-waktu</div>
+          <div className="text-[11px] text-slate-400 mt-1">Setor & tarik fleksibel</div>
+        </div>
+
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500">4. Simpanan Wisata</span>
+            <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+              <span className="text-xs font-bold">K</span>
+            </div>
+          </div>
+          <div className="text-xl font-black text-slate-900 mt-2 tabular-nums">
+            {formatRupiah(totalWisata)}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-1">Tabungan karyawisata</div>
         </div>
       </div>
 
@@ -265,6 +281,7 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
             <option value="pokok">Simpanan Pokok</option>
             <option value="wajib">Simpanan Wajib</option>
             <option value="sukarela">Simpanan Sukarela</option>
+            <option value="wisata">Simpanan Karyawisata</option>
           </select>
 
           <select
@@ -459,7 +476,7 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
                   <div className="text-[11px] font-bold text-slate-600">
                     Saldo Simpanan {currentMember.name}:
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-[11px]">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                     <div>
                       <span className="text-slate-500 block">Pokok:</span>
                       <span className="font-bold text-slate-800">
@@ -476,6 +493,12 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
                       <span className="text-slate-500 block">Sukarela:</span>
                       <span className="font-bold text-amber-700">
                         {formatRupiah(currentMember.simpananSukarela)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block">Wisata:</span>
+                      <span className="font-bold text-teal-700">
+                        {formatRupiah(currentMember.simpananWisata || 0)}
                       </span>
                     </div>
                   </div>
@@ -496,6 +519,7 @@ export const SavingsManagement: React.FC<SavingsManagementProps> = ({
                     <option value="wajib">Simpanan Wajib</option>
                     <option value="sukarela">Simpanan Sukarela</option>
                     <option value="pokok">Simpanan Pokok</option>
+                    <option value="wisata">Simpanan Karyawisata</option>
                   </select>
                 </div>
 

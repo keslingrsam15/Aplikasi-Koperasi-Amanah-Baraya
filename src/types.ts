@@ -116,6 +116,7 @@ export interface Member {
   id: string;
   memberNumber: string; // e.g. 'ANG-001'
   name: string;
+  gender?: 'L' | 'P';
   nikOrNip?: string;
   unitKerja: string; // e.g. 'Ruang Melati', 'IGD', 'Farmasi'
   phone?: string;
@@ -125,12 +126,14 @@ export interface Member {
   simpananPokok: number;
   simpananWajib: number;
   simpananSukarela: number;
+  simpananWisata?: number;
+  kekuranganKaryawisata?: number;
   address?: string;
   notes?: string;
   updatedAt?: string;
 }
 
-export type SavingsType = 'pokok' | 'wajib' | 'sukarela';
+export type SavingsType = 'pokok' | 'wajib' | 'sukarela' | 'wisata';
 export type SavingsTransactionType = 'setor' | 'tarik';
 
 export interface SavingsRecord {
