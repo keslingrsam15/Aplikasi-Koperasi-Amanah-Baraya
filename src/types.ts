@@ -240,5 +240,7 @@ export interface CoopConfig {
   showBannerSlider?: boolean;
   bannerAutoPlayInterval?: number; // In seconds, default 5
   shuConfig?: ShuConfig;
+  lpjSavedParams?: Record<string, any>;
+  lpjEditedPages?: Record<string, Record<string, string>>;
 }
 

@@ -986,6 +986,7 @@ export function App() {
                 mutations={mutations}
                 users={users}
                 coopConfig={coopConfig}
+                onSaveCoopConfig={handleSaveConfig}
               />
             )}
 
@@ -1026,7 +1027,9 @@ export function App() {
               onClick={() => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
               title="Scroll ke atas"
               aria-label="Scroll ke atas"
-              className="fixed bottom-6 right-6 z-40 p-2.5 sm:p-3 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-950/20 border border-emerald-400/50 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer group"
+              className={`fixed ${
+                activeTab === 'reports' ? 'bottom-20' : 'bottom-6'
+              } right-6 z-40 p-2.5 sm:p-3 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-950/20 border border-emerald-400/50 active:scale-95 transition-all duration-200 flex items-center justify-center cursor-pointer group print:hidden`}
             >
               <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-y-0.5 transition-transform" />
             </button>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   Transaction,
   Product,
@@ -25,6 +25,7 @@ import {
   LPJ_PORTRAIT_FIRST_PAGE_ROWS,
   LPJ_PORTRAIT_NEXT_PAGE_ROWS,
 } from '../../utils/lpjReportGenerator';
+import { saveConfigToSupabase } from '../../services/supabase';
 import {
   Printer,
   CheckCircle2,
@@ -32,6 +33,7 @@ import {
   FileDown,
   Calendar,
   BookOpen,
+  Save,
 } from 'lucide-react';
 
 interface ReportsScreenProps {
@@ -47,6 +49,7 @@ interface ReportsScreenProps {
 }
 
 const LPJ_PARAMS_STORAGE_KEY = 'koperasi_rsud_lpj_params_v3';
+const LPJ_EDITED_PAGES_STORAGE_KEY = 'koperasi_rsud_lpj_edited_pages_v1';
 
 const TAHUN_RAT_OPTIONS = ['2025', '2026', '2027', '2028'];
 const TAHUN_BUKU_OPTIONS = ['2024', '2025', '2026', '2027'];
@@ -89,14 +92,24 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   loans = [],
   mutations = [],
   users = [],
+  onSaveCoopConfig,
 }) => {
   const [openDropdown, setOpenDropdown] = useState<'RAT' | 'TAHUN_BUKU' | null>(null);
   const [downloadNotice, setDownloadNotice] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [coverImageSrc, setCoverImageSrc] = useState<string>('/assets/lpj_cover_page1.jpg');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [isSavingReport, setIsSavingReport] = useState<boolean>(false);
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
+
+  const reportContainerRef = useRef<HTMLDivElement>(null);
+  const pendingEditsRef = useRef<Record<string, string>>({});
 
   const [lpjParams, setLpjParams] = useState<LpjReportParams>(() => {
     try {
+      if (coopConfig?.lpjSavedParams && typeof coopConfig.lpjSavedParams === 'object') {
+        return { ...defaultLpjReportParams, ...(coopConfig.lpjSavedParams as Partial<LpjReportParams>) };
+      }
       const saved = localStorage.getItem(LPJ_PARAMS_STORAGE_KEY);
       if (saved) {
         return { ...defaultLpjReportParams, ...JSON.parse(saved) };
@@ -106,6 +119,44 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
       return defaultLpjReportParams;
     }
   });
+
+  const [editedPagesByPeriod, setEditedPagesByPeriod] = useState<
+    Record<string, Record<string, string>>
+  >(() => {
+    try {
+      const localRaw = localStorage.getItem(LPJ_EDITED_PAGES_STORAGE_KEY);
+      const localParsed = localRaw ? JSON.parse(localRaw) : {};
+      const cloudParsed = coopConfig?.lpjEditedPages || {};
+      return { ...localParsed, ...cloudParsed };
+    } catch {
+      return coopConfig?.lpjEditedPages || {};
+    }
+  });
+
+  const periodKey = `${lpjParams.tahunBuku}_${lpjParams.tahunRat}`;
+
+  // Sync from Supabase coopConfig when loaded/refreshed from cloud
+  useEffect(() => {
+    const cloudPages = coopConfig?.lpjEditedPages as
+      | Record<string, Record<string, string>>
+      | undefined;
+    if (cloudPages && Object.keys(cloudPages).length > 0) {
+      setEditedPagesByPeriod((prev) => {
+        const merged: Record<string, Record<string, string>> = { ...prev };
+        for (const [pKey, pages] of Object.entries(cloudPages)) {
+          if (pages && typeof pages === 'object') {
+            merged[pKey] = { ...(merged[pKey] || {}), ...pages };
+          }
+        }
+        try {
+          localStorage.setItem(LPJ_EDITED_PAGES_STORAGE_KEY, JSON.stringify(merged));
+        } catch {
+          // ignore storage quota errors
+        }
+        return merged;
+      });
+    }
+  }, [coopConfig?.lpjEditedPages]);
 
   useEffect(() => {
     try {
@@ -190,7 +241,9 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
     19 + debtAppendixPages.length + shuAppendixPages.length + receiptAppendixPages.length;
 
   const handleSelectTahunRat = (newTahunRat: string) => {
+    pendingEditsRef.current = {};
     setLpjParams((prev) => buildParamsForPeriod(prev.tahunBuku, newTahunRat, prev));
+    setHasUnsavedChanges(true);
     setOpenDropdown(null);
   };
 
@@ -198,6 +251,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
     newTahunBuku: string,
     newFormat?: LpjPeriodeBulanFormat
   ) => {
+    pendingEditsRef.current = {};
     setLpjParams((prev) =>
       buildParamsForPeriod(
         newTahunBuku,
@@ -206,7 +260,102 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
         newFormat || prev.periodeBulanFormat
       )
     );
+    setHasUnsavedChanges(true);
     setOpenDropdown(null);
+  };
+
+  // Setup Word-like contentEditable & restore saved page edits for current period
+  useLayoutEffect(() => {
+    const container = reportContainerRef.current;
+    if (!container) return;
+
+    const currentSavedForPeriod = editedPagesByPeriod[periodKey] || {};
+    const sheets = container.querySelectorAll('.f4-sheet-portrait, .f4-sheet-landscape');
+
+    sheets.forEach((sheet, idx) => {
+      const contentEl = sheet.firstElementChild as HTMLElement | null;
+      if (!contentEl) return;
+
+      const pageKey = `page-${idx + 2}`;
+      contentEl.setAttribute('data-lpj-editable', pageKey);
+      contentEl.setAttribute('contenteditable', 'true');
+      contentEl.setAttribute('spellcheck', 'false');
+      contentEl.classList.add(
+        'outline-none',
+        'focus:ring-1',
+        'focus:ring-emerald-500/35',
+        'rounded-xs',
+        'cursor-text'
+      );
+
+      const overrideHtml =
+        pendingEditsRef.current[pageKey] !== undefined
+          ? pendingEditsRef.current[pageKey]
+          : currentSavedForPeriod[pageKey];
+
+      if (overrideHtml !== undefined && contentEl.innerHTML !== overrideHtml) {
+        contentEl.innerHTML = overrideHtml;
+      }
+    });
+  }, [periodKey, editedPagesByPeriod]);
+
+  const handleReportInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const editableEl = target.closest('[data-lpj-editable]') as HTMLElement | null;
+    if (!editableEl) return;
+
+    const pageKey = editableEl.getAttribute('data-lpj-editable');
+    if (!pageKey) return;
+
+    pendingEditsRef.current[pageKey] = editableEl.innerHTML;
+    if (!hasUnsavedChanges) {
+      setHasUnsavedChanges(true);
+    }
+  };
+
+  const handleSaveReportChanges = async () => {
+    setIsSavingReport(true);
+    try {
+      // Collect any active edits from pendingEditsRef
+      const currentPeriodExisting = editedPagesByPeriod[periodKey] || {};
+      const updatedForPeriod = {
+        ...currentPeriodExisting,
+        ...pendingEditsRef.current,
+      };
+      const updatedAllPeriods: Record<string, Record<string, string>> = {
+        ...editedPagesByPeriod,
+        [periodKey]: updatedForPeriod,
+      };
+
+      setEditedPagesByPeriod(updatedAllPeriods);
+      try {
+        localStorage.setItem(
+          LPJ_EDITED_PAGES_STORAGE_KEY,
+          JSON.stringify(updatedAllPeriods)
+        );
+        localStorage.setItem(LPJ_PARAMS_STORAGE_KEY, JSON.stringify(lpjParams));
+      } catch (err) {
+        console.error('Failed saving LPJ edits to localStorage:', err);
+      }
+
+      const updatedConfig: CoopConfig = {
+        ...coopConfig,
+        lpjSavedParams: lpjParams,
+        lpjEditedPages: updatedAllPeriods,
+      };
+
+      if (onSaveCoopConfig) {
+        onSaveCoopConfig(updatedConfig);
+      } else {
+        await saveConfigToSupabase(updatedConfig);
+      }
+
+      setHasUnsavedChanges(false);
+      setSaveSuccessNotice(true);
+      setTimeout(() => setSaveSuccessNotice(false), 3500);
+    } finally {
+      setIsSavingReport(false);
+    }
   };
 
   const handleDownloadWord = async () => {
@@ -474,29 +623,29 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             </div>
           </div>
 
-          {/* Right: Cetak F4 / PDF & Download Word F4 (.doc) */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+          {/* Right: Cetak F4 / PDF & Download Word F4 (.doc) (Icon-Only Buttons) */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
+              id="btn-print-lpj-pdf"
               type="button"
               onClick={handlePrintDocument}
-              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-2 transition cursor-pointer whitespace-nowrap"
+              title="Cetak F4 / PDF"
+              aria-label="Cetak F4 / PDF"
+              className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl flex items-center justify-center transition cursor-pointer"
             >
-              <Printer className="w-4 h-4 text-slate-600 shrink-0" />
-              <span>Cetak F4 / PDF</span>
+              <Printer className="w-4 h-4 text-slate-700 shrink-0" />
             </button>
 
             <button
+              id="btn-download-lpj-word"
               type="button"
               disabled={isDownloading}
               onClick={handleDownloadWord}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition active:scale-95 cursor-pointer whitespace-nowrap"
+              title="Download Laporan Word F4 (.doc)"
+              aria-label="Download Laporan Word F4 (.doc)"
+              className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl flex items-center justify-center shadow-sm transition active:scale-95 cursor-pointer"
             >
               <FileDown className="w-4 h-4 shrink-0" />
-              <span>
-                {isDownloading
-                  ? 'Menyiapkan Dokumen Word F4...'
-                  : 'Download Laporan Word F4 (.doc)'}
-              </span>
             </button>
           </div>
         </div>
@@ -518,8 +667,14 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
       {/* =================================================================================
           OFFICIAL F4 DOCUMENT SHEETS (21.5cm x 33.0cm, Margin 2.5cm all 4 sides)
           100% IDENTICAL TO RAT KOPERASI AMBAR LPJ 2026.pdf (PAGES 1 - 31)
+          WORD-LIKE DIRECT EDITING (contentEditable) ENABLED ON ALL SHEETS
       ================================================================================= */}
-      <div className="space-y-8 print:space-y-0">
+      <div
+        key={`lpj-canvas-${periodKey}`}
+        ref={reportContainerRef}
+        onInput={handleReportInput}
+        className="space-y-8 print:space-y-0"
+      >
         {/* ==================== SECTION I: PAGES 1 - 7 ==================== */}
         {(activeSection === 'ALL' || activeSection === 'COVER_TATIB') && (
           <>
@@ -790,20 +945,19 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
                 <p className="text-center">
                   Rapat anggota sah apabila dihadiri oleh lebih dari setengah jumlah anggota
                 </p>
-
-                <div className="text-center font-bold pt-2">
-                  <p>BAB VII</p>
-                  <p>SAHNYA KEPUTUSAN RAPAT</p>
-                  <p>Pasal 7</p>
-                </div>
               </div>
 
               <LpjPageFooter pageNo={6} />
             </div>
 
-            {/* PAGE 7: TATA TERTIB RAT LANJUTAN PASAL 7 - BAB IX (100% Identical to PDF Page 7) */}
+            {/* PAGE 7: TATA TERTIB RAT BAB VII - BAB IX */}
             <div className="f4-sheet-portrait bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[21.5cm] min-h-[33cm] p-6 sm:p-[2.5cm] text-slate-900 font-sans text-[11.5pt] leading-[1.55] flex flex-col justify-between">
               <div className="space-y-4 text-justify">
+                <div className="text-center font-bold">
+                  <p>BAB VII</p>
+                  <p>SAHNYA KEPUTUSAN RAPAT</p>
+                  <p>Pasal 7</p>
+                </div>
                 <ol className="list-[lower-alpha] pl-8 space-y-1.5">
                   <li>
                     Keputusan Rapat Anggota sah apabila berdasarkan dengan cara musyawarah untuk
@@ -2694,6 +2848,35 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             ))}
           </>
         )}
+      </div>
+
+      {/* Floating Save Button at Bottom-Right Corner Integrated with Supabase */}
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2 print:hidden">
+        {saveSuccessNotice && (
+          <div className="px-3.5 py-2 rounded-xl bg-slate-900/95 text-white text-xs font-bold shadow-lg flex items-center gap-2 border border-emerald-500/40">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Perubahan laporan tersimpan ke Supabase</span>
+          </div>
+        )}
+
+        <button
+          id="btn-save-lpj-report"
+          type="button"
+          disabled={isSavingReport}
+          onClick={handleSaveReportChanges}
+          title="Simpan perubahan laporan resmi ke Supabase"
+          className={`px-4 py-3 rounded-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 shadow-xl transition-all active:scale-95 cursor-pointer border ${
+            hasUnsavedChanges
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-400 shadow-emerald-950/25 ring-2 ring-emerald-400/50'
+              : 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-500/40 shadow-emerald-950/20'
+          }`}
+        >
+          <Save className="w-4 h-4 shrink-0" />
+          <span>{isSavingReport ? 'Menyimpan...' : 'Simpan Data'}</span>
+          {hasUnsavedChanges && (
+            <span className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" />
+          )}
+        </button>
       </div>
     </div>
   );

@@ -1394,11 +1394,11 @@ export function generateLpjWordHtml(
   <h4 class="center">BAB VI<br/>SAHNYA RAPAT<br/>Pasal 6</h4>
   <p class="center">Rapat anggota sah apabila dihadiri oleh lebih dari setengah jumlah anggota</p>
   <br/>
-  <h4 class="center">BAB VII<br/>SAHNYA KEPUTUSAN RAPAT<br/>Pasal 7</h4>
   ${renderPageFooterHtml(6)}
 
-  <!-- ==================== HALAMAN 7: TATA TERTIB RAT (LANJUTAN PASAL 7 - BAB IX) ==================== -->
+  <!-- ==================== HALAMAN 7: TATA TERTIB RAT (BAB VII - BAB IX) ==================== -->
   <div class="page-break"></div>
+  <h4 class="center">BAB VII<br/>SAHNYA KEPUTUSAN RAPAT<br/>Pasal 7</h4>
   <ol type="a" style="margin-left:18pt;">
     <li>Keputusan Rapat Anggota sah apabila berdasarkan dengan cara musyawarah untuk mufakat dan di setujui oleh Sebagian anggota peserta rapat</li>
     <li>Apabila tidak terdapat / tidak tercapai kesepakatan secara musyawarah untuk mufakat, maka pimpinan rapat mengusahakan suatu keputusan berdasarkan pemungutan suara dan dianggap sah bila disetujui oleh Sebagian terbesar peserta rapat</li>
