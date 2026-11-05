@@ -19,6 +19,11 @@ import {
   formatDecimalTwoIndo,
   downloadLpjWordDocument,
   renderDynamicCoverDataUrl,
+  paginateAppendixTable,
+  LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
+  LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+  LPJ_PORTRAIT_FIRST_PAGE_ROWS,
+  LPJ_PORTRAIT_NEXT_PAGE_ROWS,
 } from '../../utils/lpjReportGenerator';
 import {
   Printer,
@@ -48,7 +53,7 @@ const TAHUN_BUKU_OPTIONS = ['2024', '2025', '2026', '2027'];
 
 // Helper to render the exact PDF Page Footer ("KOPERASI AMANAH BARAYA | [Green Page Box]")
 const LpjPageFooter: React.FC<{ pageNo: number | string }> = ({ pageNo }) => (
-  <div className="mt-auto pt-6 flex items-center justify-end gap-2 text-[10pt] font-sans text-slate-800 select-none">
+  <div className="mt-auto pt-3 flex items-center justify-end gap-2 text-[10pt] font-sans text-slate-800 select-none">
     <span className="tracking-wide uppercase">KOPERASI AMANAH BARAYA</span>
     <span
       className="inline-flex items-center justify-center min-w-[28px] h-[22px] px-1.5 text-white font-bold text-[10pt]"
@@ -60,8 +65,16 @@ const LpjPageFooter: React.FC<{ pageNo: number | string }> = ({ pageNo }) => (
 );
 
 // Helper to render accounting-style Rp cell ("Rp" on left, formatted amount or "-" on right)
-const RpCell: React.FC<{ value: number; bold?: boolean }> = ({ value, bold }) => (
-  <div className={`flex items-center justify-between gap-2 tabular-nums ${bold ? 'font-bold' : ''}`}>
+const RpCell: React.FC<{ value: number; bold?: boolean; compact?: boolean }> = ({
+  value,
+  bold,
+  compact,
+}) => (
+  <div
+    className={`flex items-center justify-between ${
+      compact ? 'gap-0.5 whitespace-nowrap' : 'gap-2'
+    } tabular-nums ${bold ? 'font-bold' : ''}`}
+  >
     <span>Rp</span>
     <span>{value === 0 ? '-' : formatNumberPlain(value)}</span>
   </div>
@@ -136,6 +149,45 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   const filteredMemberRows = lpjData.memberRows;
   const activeSection = 'ALL';
   const memberSearch = '';
+
+  const debtAppendixPages = useMemo(
+    () =>
+      paginateAppendixTable(
+        filteredMemberRows,
+        20,
+        LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
+        LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+        lpjData.nonMemberRows.length + 1
+      ),
+    [filteredMemberRows, lpjData.nonMemberRows.length]
+  );
+
+  const shuAppendixPages = useMemo(
+    () =>
+      paginateAppendixTable(
+        filteredMemberRows,
+        20 + debtAppendixPages.length,
+        LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
+        LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+        1
+      ),
+    [filteredMemberRows, debtAppendixPages.length]
+  );
+
+  const receiptAppendixPages = useMemo(
+    () =>
+      paginateAppendixTable(
+        filteredMemberRows,
+        20 + debtAppendixPages.length + shuAppendixPages.length,
+        LPJ_PORTRAIT_FIRST_PAGE_ROWS,
+        LPJ_PORTRAIT_NEXT_PAGE_ROWS,
+        1
+      ),
+    [filteredMemberRows, debtAppendixPages.length, shuAppendixPages.length]
+  );
+
+  const totalPagesCount =
+    19 + debtAppendixPages.length + shuAppendixPages.length + receiptAppendixPages.length;
 
   const handleSelectTahunRat = (newTahunRat: string) => {
     setLpjParams((prev) => buildParamsForPeriod(prev.tahunBuku, newTahunRat, prev));
@@ -457,7 +509,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
               <strong>
                 RAT_KOPERASI_AMBAR_LPJ_{lpjParams.tahunRat}_TahunBuku_{lpjParams.tahunBuku}_F4.doc
               </strong>{' '}
-              berhasil diunduh lengkap dengan Desain Cover &amp; Halaman 1–31.
+              berhasil diunduh lengkap dengan Desain Cover &amp; Halaman 1–{totalPagesCount}.
             </span>
           </div>
         )}
@@ -2092,448 +2144,554 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
           </>
         )}
 
-        {/* ==================== SECTION IV: PAGES 20 - 23 (REKAP SIMPANAN & SISA HUTANG PER 31 DESEMBER) ==================== */}
-        {(activeSection === 'ALL' || activeSection === 'LAMPIRAN_PIUTANG') && (
-          <div className="f4-sheet-landscape bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[33cm] p-4 sm:p-[2.5cm] text-slate-900 font-sans text-[9.5pt] leading-[1.35] flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="text-center font-bold uppercase space-y-0.5">
-                <p className="text-[10.5pt]">REKAP SIMPANAN ANGGOTA KOPERASI AMANAH BARAYA</p>
-                <p className="text-[10.5pt]">RSUD AL MULK KOTA SUKABUMI</p>
-                <p className="text-[10pt]">PER : {lpjParams.tanggalTutupBuku.toUpperCase()}</p>
-              </div>
+        {/* ==================== SECTION IV: REKAP SIMPANAN & SISA HUTANG PER 31 DESEMBER (PER HALAMAN F4 LANDSCAPE PENUH HINGGA MARGIN BAWAH) ==================== */}
+        {(activeSection === 'ALL' || activeSection === 'LAMPIRAN_PIUTANG') &&
+          debtAppendixPages.map((sheet) => (
+            <div
+              key={`lpj-page-${sheet.pageNo}`}
+              className="f4-sheet-landscape bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[33cm] px-3 py-5 sm:px-5 sm:py-6 xl:px-8 xl:py-6 text-slate-900 font-sans leading-[1.2] flex flex-col justify-between"
+            >
+              <div className="space-y-2.5 w-full">
+                {sheet.showTitleAndHeader && (
+                  <div className="text-center font-bold uppercase space-y-0.5">
+                    <p className="text-[9.5pt] sm:text-[10pt]">
+                      REKAP SIMPANAN ANGGOTA KOPERASI AMANAH BARAYA
+                    </p>
+                    <p className="text-[9.5pt] sm:text-[10pt]">RSUD AL MULK KOTA SUKABUMI</p>
+                    <p className="text-[9pt] sm:text-[9.5pt]">
+                      PER : {lpjParams.tanggalTutupBuku.toUpperCase()}
+                    </p>
+                  </div>
+                )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-slate-900 text-[8.5pt]">
-                  <thead>
-                    <tr className="font-bold">
-                      <th
-                        rowSpan={2}
-                        className="border border-slate-900 py-1.5 px-1.5 text-center w-8"
-                      >
-                        NO
-                      </th>
-                      <th rowSpan={2} className="border border-slate-900 py-1.5 px-2 text-center">
-                        NAMA
-                      </th>
-                      <th colSpan={4} className="border border-slate-900 py-1 px-2 text-center">
-                        SIMPANAN KOPERASI
-                      </th>
-                      <th
-                        rowSpan={2}
-                        className="border border-slate-900 py-1.5 px-2 text-center w-24"
-                      >
-                        JUMLAH
-                        <br />
-                        SIMPANAN
-                      </th>
-                      <th colSpan={3} className="border border-slate-900 py-1 px-2 text-center">
-                        SISA HUTANG
-                      </th>
-                      <th
-                        rowSpan={2}
-                        className="border border-slate-900 py-1.5 px-2 text-center w-24"
-                      >
-                        JUMLAH PIUTANG
-                      </th>
-                      <th
-                        rowSpan={2}
-                        className="border border-slate-900 py-1.5 px-2 text-center w-24"
-                      >
-                        JUMLAH JASA
-                        <br />
-                        PINJAMAN
-                      </th>
-                      <th
-                        rowSpan={2}
-                        className="border border-slate-900 py-1.5 px-2 text-center w-20"
-                      >
-                        KETERANGAN
-                      </th>
-                    </tr>
-                    <tr className="font-bold">
-                      <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                        POKOK
-                      </th>
-                      <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                        WAJIB
-                      </th>
-                      <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                        SUKARELA
-                      </th>
-                      <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                        WISATA
-                      </th>
-                      <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                        HUTANG
-                        <br />
-                        PINJAMAN
-                      </th>
-                      <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                        HUTANG
-                        <br />
-                        BARANG
-                      </th>
-                      <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                        KEKURANGAN
-                        <br />
-                        KARYAWISATA
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="tabular-nums">
-                    {filteredMemberRows.map((row) => (
-                      <tr key={row.memberId} className="hover:bg-slate-50">
-                        <td className="border border-slate-900 py-1 px-1.5 text-center">
-                          {row.no}
-                        </td>
-                        <td className="border border-slate-900 py-1 px-2">{row.name}</td>
-                        <td className="border border-slate-900 py-1 px-1.5">
-                          <RpCell value={row.pokok} />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-1.5">
-                          <RpCell value={row.wajib} />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-1.5">
-                          <RpCell value={row.sukarela} />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-1.5">
-                          <RpCell value={row.wisata} />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-2">
-                          <RpCell value={row.jumlahSimpanan} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-1.5">
-                          <RpCell value={row.hutangPinjaman} />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-1.5">
-                          <RpCell value={row.hutangBarang} />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-1.5">
-                          <RpCell value={row.kekuranganKaryawisata} />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-2">
-                          <RpCell value={row.jumlahPiutang} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-2">
-                          <RpCell value={row.jumlahJasaPinjaman} />
-                        </td>
-                        <td className="border border-slate-900 py-1 px-1.5 text-center">
-                          {row.keterangan}
-                        </td>
-                      </tr>
-                    ))}
-
-                    {!memberSearch.trim() &&
-                      lpjData.nonMemberRows.map((na) => (
-                        <tr key={`na-${na.no}`}>
-                          <td className="border border-slate-900 py-1 px-1.5 text-center"></td>
-                          <td className="border border-slate-900 py-1 px-2">{na.name}</td>
-                          <td className="border border-slate-900 py-1 px-1.5"></td>
-                          <td className="border border-slate-900 py-1 px-1.5"></td>
-                          <td className="border border-slate-900 py-1 px-1.5"></td>
-                          <td className="border border-slate-900 py-1 px-1.5"></td>
-                          <td className="border border-slate-900 py-1 px-2"></td>
-                          <td className="border border-slate-900 py-1 px-1.5"></td>
-                          <td className="border border-slate-900 py-1 px-1.5">
-                            <RpCell value={na.hutangBarang} />
+                <div className="w-full">
+                  <table className="w-full table-fixed border-collapse border border-slate-900 text-[4.8pt] sm:text-[5.2pt] lg:text-[5.5pt] xl:text-[6.4pt] leading-[1.18]">
+                    <colgroup>
+                      <col style={{ width: '2.4%' }} />
+                      <col style={{ width: '13.2%' }} />
+                      <col style={{ width: '7.8%' }} />
+                      <col style={{ width: '7.8%' }} />
+                      <col style={{ width: '7.8%' }} />
+                      <col style={{ width: '5.6%' }} />
+                      <col style={{ width: '8.3%' }} />
+                      <col style={{ width: '8.1%' }} />
+                      <col style={{ width: '6.4%' }} />
+                      <col style={{ width: '7.8%' }} />
+                      <col style={{ width: '8.3%' }} />
+                      <col style={{ width: '7.8%' }} />
+                      <col style={{ width: '8.7%' }} />
+                    </colgroup>
+                    {sheet.showTitleAndHeader && (
+                      <thead>
+                        <tr className="font-bold">
+                          <th
+                            rowSpan={2}
+                            className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden"
+                          >
+                            NO
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="border border-slate-900 py-1 px-1 text-center overflow-hidden"
+                          >
+                            NAMA
+                          </th>
+                          <th
+                            colSpan={4}
+                            className="border border-slate-900 py-1 px-1 text-center overflow-hidden"
+                          >
+                            SIMPANAN KOPERASI
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden"
+                          >
+                            JUMLAH
+                            <br />
+                            SIMPANAN
+                          </th>
+                          <th
+                            colSpan={3}
+                            className="border border-slate-900 py-1 px-1 text-center overflow-hidden"
+                          >
+                            SISA HUTANG
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden"
+                          >
+                            JUMLAH
+                            <br />
+                            PIUTANG
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden"
+                          >
+                            JUMLAH JASA
+                            <br />
+                            PINJAMAN
+                          </th>
+                          <th
+                            rowSpan={2}
+                            className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden"
+                          >
+                            KETERANGAN
+                          </th>
+                        </tr>
+                        <tr className="font-bold">
+                          <th className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden">
+                            POKOK
+                          </th>
+                          <th className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden">
+                            WAJIB
+                          </th>
+                          <th className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden">
+                            SUKARELA
+                          </th>
+                          <th className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden">
+                            WISATA
+                          </th>
+                          <th className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden">
+                            HUTANG
+                            <br />
+                            PINJAMAN
+                          </th>
+                          <th className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden">
+                            HUTANG
+                            <br />
+                            BARANG
+                          </th>
+                          <th className="border border-slate-900 py-1 px-0.5 text-center overflow-hidden">
+                            KEKURANGAN
+                            <br />
+                            KARYAWISATA
+                          </th>
+                        </tr>
+                      </thead>
+                    )}
+                    <tbody className="tabular-nums">
+                      {sheet.rows.map((row) => (
+                        <tr key={row.memberId} className="hover:bg-slate-50">
+                          <td className="border border-slate-900 py-[3px] px-0.5 text-center overflow-hidden">
+                            {row.no}
                           </td>
-                          <td className="border border-slate-900 py-1 px-1.5"></td>
-                          <td className="border border-slate-900 py-1 px-2">
-                            <RpCell value={na.jumlahPiutang} />
+                          <td className="border border-slate-900 py-[3px] px-1 truncate overflow-hidden">
+                            {row.name}
                           </td>
-                          <td className="border border-slate-900 py-1 px-2"></td>
-                          <td className="border border-slate-900 py-1 px-1.5 text-center">
-                            NON ANGGOTA
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.pokok} compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.wajib} compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.sukarela} compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.wisata} compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.jumlahSimpanan} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.hutangPinjaman} compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.hutangBarang} compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.kekuranganKaryawisata} compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.jumlahPiutang} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                            <RpCell value={row.jumlahJasaPinjaman} compact />
+                          </td>
+                          <td className="border border-slate-900 py-[3px] px-0.5 text-center truncate overflow-hidden">
+                            {row.keterangan}
                           </td>
                         </tr>
                       ))}
 
-                    <tr className="font-bold bg-slate-50">
-                      <td className="border border-slate-900 py-1.5 px-1.5"></td>
-                      <td className="border border-slate-900 py-1.5 px-2"></td>
-                      <td className="border border-slate-900 py-1.5 px-1.5">
-                        <RpCell value={lpjData.totalSimpananPokok} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-1.5">
-                        <RpCell value={lpjData.totalSimpananWajib} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-1.5">
-                        <RpCell value={lpjData.totalSimpananSukarela} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-1.5">
-                        <RpCell value={lpjData.totalSimpananWisata} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-2">
-                        <RpCell value={lpjData.totalSeluruhSimpanan} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-1.5">
-                        <RpCell value={lpjData.totalHutangPinjamanAnggota} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-1.5">
-                        <RpCell value={lpjData.totalHutangBarangAnggota} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-1.5">
-                        <RpCell value={lpjData.totalKekuranganKaryawisataAnggota} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-2">
-                        <RpCell value={lpjData.totalPiutangAnggota} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-2">
-                        <RpCell value={lpjData.totalJasaPinjamanAnggota} bold />
-                      </td>
-                      <td className="border border-slate-900 py-1.5 px-1.5"></td>
-                    </tr>
-                  </tbody>
-                </table>
+                      {sheet.isLastPage &&
+                        !memberSearch.trim() &&
+                        lpjData.nonMemberRows.map((na) => (
+                          <tr key={`na-${na.no}`}>
+                            <td className="border border-slate-900 py-[3px] px-0.5 text-center"></td>
+                            <td className="border border-slate-900 py-[3px] px-1 truncate overflow-hidden">
+                              {na.name}
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-0.5"></td>
+                            <td className="border border-slate-900 py-[3px] px-0.5"></td>
+                            <td className="border border-slate-900 py-[3px] px-0.5"></td>
+                            <td className="border border-slate-900 py-[3px] px-0.5"></td>
+                            <td className="border border-slate-900 py-[3px] px-0.5"></td>
+                            <td className="border border-slate-900 py-[3px] px-0.5"></td>
+                            <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                              <RpCell value={na.hutangBarang} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-0.5"></td>
+                            <td className="border border-slate-900 py-[3px] px-0.5 overflow-hidden">
+                              <RpCell value={na.jumlahPiutang} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-0.5"></td>
+                            <td className="border border-slate-900 py-[3px] px-0.5 text-center truncate overflow-hidden">
+                              NON ANGGOTA
+                            </td>
+                          </tr>
+                        ))}
+
+                      {sheet.isLastPage && (
+                        <tr className="font-bold bg-slate-50">
+                          <td className="border border-slate-900 py-1 px-0.5"></td>
+                          <td className="border border-slate-900 py-1 px-1"></td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalSimpananPokok} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalSimpananWajib} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalSimpananSukarela} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalSimpananWisata} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalSeluruhSimpanan} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalHutangPinjamanAnggota} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalHutangBarangAnggota} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalKekuranganKaryawisataAnggota} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalPiutangAnggota} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5 overflow-hidden">
+                            <RpCell value={lpjData.totalJasaPinjamanAnggota} bold compact />
+                          </td>
+                          <td className="border border-slate-900 py-1 px-0.5"></td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
+              <LpjPageFooter pageNo={sheet.pageNo} />
             </div>
+          ))}
 
-            <LpjPageFooter pageNo="20-23" />
-          </div>
-        )}
-
-        {/* ==================== SECTION V: PAGES 24 - 31 (REKAP SIMPANAN & SHU + TANDA TERIMA SHU RAT) ==================== */}
+        {/* ==================== SECTION V: REKAP SIMPANAN & SHU (F4 LANDSCAPE) & TANDA TERIMA SHU RAT (F4 PORTRAIT PENUH HINGGA MARGIN BAWAH) ==================== */}
         {(activeSection === 'ALL' || activeSection === 'LAMPIRAN_SHU_TANDA_TERIMA') && (
           <>
-            {/* PAGES 24 - 27: REKAP SIMPANAN ANGGOTA BULAN DESEMBER 2025 (SHU SIMPANAN & SHU JASA) */}
-            <div className="f4-sheet-landscape bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[33cm] p-4 sm:p-[2.5cm] text-slate-900 font-sans text-[9.5pt] leading-[1.35] flex flex-col justify-between">
-              <div className="space-y-4">
-                <div className="text-center font-bold uppercase space-y-0.5">
-                  <p className="text-[10.5pt]">REKAP SIMPANAN ANGGOTA KOPERASI AMANAH BARAYA</p>
-                  <p className="text-[10.5pt]">RSUD AL MULK KOTA SUKABUMI</p>
-                  <p className="text-[10pt]">BULAN DESEMBER {lpjParams.tahunBuku}</p>
+            {/* REKAP SIMPANAN ANGGOTA BULAN DESEMBER (SHU SIMPANAN & SHU JASA) */}
+            {shuAppendixPages.map((sheet) => (
+              <div
+                key={`lpj-page-${sheet.pageNo}`}
+                className="f4-sheet-landscape bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[33cm] px-3 py-5 sm:px-5 sm:py-6 xl:px-8 xl:py-6 text-slate-900 font-sans leading-[1.2] flex flex-col justify-between"
+              >
+                <div className="space-y-2.5 w-full">
+                  {sheet.showTitleAndHeader && (
+                    <div className="text-center font-bold uppercase space-y-0.5">
+                      <p className="text-[9.5pt] sm:text-[10pt]">
+                        REKAP SIMPANAN ANGGOTA KOPERASI AMANAH BARAYA
+                      </p>
+                      <p className="text-[9.5pt] sm:text-[10pt]">RSUD AL MULK KOTA SUKABUMI</p>
+                      <p className="text-[9pt] sm:text-[9.5pt]">
+                        BULAN DESEMBER {lpjParams.tahunBuku}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="w-full">
+                    <table className="w-full table-fixed border-collapse border border-slate-900 text-[5.4pt] sm:text-[6pt] lg:text-[6.5pt] xl:text-[7.2pt] leading-[1.18]">
+                      <colgroup>
+                        <col style={{ width: '2.8%' }} />
+                        <col style={{ width: '16.8%' }} />
+                        <col style={{ width: '8.0%' }} />
+                        <col style={{ width: '8.2%' }} />
+                        <col style={{ width: '8.5%' }} />
+                        <col style={{ width: '7.0%' }} />
+                        <col style={{ width: '9.5%' }} />
+                        <col style={{ width: '9.2%' }} />
+                        <col style={{ width: '9.8%' }} />
+                        <col style={{ width: '9.8%' }} />
+                        <col style={{ width: '10.4%' }} />
+                      </colgroup>
+                      {sheet.showTitleAndHeader && (
+                        <thead>
+                          <tr className="font-bold">
+                            <th
+                              rowSpan={2}
+                              className="border border-slate-900 py-1 px-0.5 text-center"
+                            >
+                              NO
+                            </th>
+                            <th
+                              rowSpan={2}
+                              className="border border-slate-900 py-1 px-1 text-center"
+                            >
+                              NAMA
+                            </th>
+                            <th
+                              colSpan={4}
+                              className="border border-slate-900 py-1 px-1 text-center"
+                            >
+                              SIMPANAN KOPERASI
+                            </th>
+                            <th
+                              rowSpan={2}
+                              className="border border-slate-900 py-1 px-1 text-center"
+                            >
+                              JUMLAH
+                              <br />
+                              SIMPANAN
+                            </th>
+                            <th
+                              rowSpan={2}
+                              className="border border-slate-900 py-1 px-1 text-center"
+                            >
+                              SHU SIMPANAN
+                              <br />
+                              {lpjData.persenShuSimpananFormatted}
+                            </th>
+                            <th
+                              rowSpan={2}
+                              className="border border-slate-900 py-1 px-1 text-center"
+                            >
+                              JUMLAH JASA
+                              <br />
+                              PINJAMAN
+                            </th>
+                            <th
+                              rowSpan={2}
+                              className="border border-slate-900 py-1 px-1 text-center"
+                            >
+                              SHU JASA
+                              <br />
+                              {lpjData.persenShuJasaFormatted}
+                            </th>
+                            <th
+                              rowSpan={2}
+                              className="border border-slate-900 py-1 px-1 text-center"
+                            >
+                              JUMLAH
+                              <br />
+                              DITERIMA
+                            </th>
+                          </tr>
+                          <tr className="font-bold">
+                            <th className="border border-slate-900 py-1 px-0.5 text-center">
+                              POKOK
+                            </th>
+                            <th className="border border-slate-900 py-1 px-0.5 text-center">
+                              WAJIB
+                            </th>
+                            <th className="border border-slate-900 py-1 px-0.5 text-center">
+                              SUKARELA
+                            </th>
+                            <th className="border border-slate-900 py-1 px-0.5 text-center">
+                              WISATA
+                            </th>
+                          </tr>
+                        </thead>
+                      )}
+                      <tbody className="tabular-nums">
+                        {sheet.rows.map((row) => (
+                          <tr key={`shu-${row.memberId}`} className="hover:bg-slate-50">
+                            <td className="border border-slate-900 py-[3px] px-0.5 text-center">
+                              {row.no}
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1 truncate">
+                              {row.name}
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1">
+                              <RpCell value={row.pokok} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1">
+                              <RpCell value={row.wajib} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1">
+                              <RpCell value={row.sukarela} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1">
+                              <RpCell value={row.wisata} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1">
+                              <RpCell value={row.jumlahSimpanan} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1 text-right whitespace-nowrap">
+                              {formatDecimalTwoIndo(row.shuSimpananExact)}
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1">
+                              <RpCell value={row.jumlahJasaPinjaman} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1">
+                              <RpCell value={row.shuJasa} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3px] px-1">
+                              <RpCell value={row.jumlahTandaTerimaRat} bold compact />
+                            </td>
+                          </tr>
+                        ))}
+
+                        {sheet.isLastPage && (
+                          <tr className="font-bold bg-slate-50">
+                            <td className="border border-slate-900 py-1 px-0.5"></td>
+                            <td className="border border-slate-900 py-1 px-1"></td>
+                            <td className="border border-slate-900 py-1 px-1">
+                              <RpCell value={lpjData.totalSimpananPokok} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-1 px-1">
+                              <RpCell value={lpjData.totalSimpananWajib} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-1 px-1">
+                              <RpCell value={lpjData.totalSimpananSukarela} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-1 px-1">
+                              <RpCell value={lpjData.totalSimpananWisata} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-1 px-1">
+                              <RpCell value={lpjData.totalSeluruhSimpanan} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-1 px-1 text-right whitespace-nowrap">
+                              {formatDecimalTwoIndo(lpjData.totalShuSimpananExactAnggota)}
+                            </td>
+                            <td className="border border-slate-900 py-1 px-1">
+                              <RpCell value={lpjData.totalJasaPinjamanAnggota} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-1 px-1">
+                              <RpCell value={lpjData.totalShuJasaAnggota} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-1 px-1">
+                              <RpCell value={lpjData.totalTandaTerimaRat} bold compact />
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-slate-900 text-[8.5pt]">
-                    <thead>
-                      <tr className="font-bold">
-                        <th
-                          rowSpan={2}
-                          className="border border-slate-900 py-1.5 px-1.5 text-center w-8"
-                        >
-                          NO
-                        </th>
-                        <th rowSpan={2} className="border border-slate-900 py-1.5 px-2 text-center">
-                          NAMA
-                        </th>
-                        <th colSpan={4} className="border border-slate-900 py-1 px-2 text-center">
-                          SIMPANAN KOPERASI
-                        </th>
-                        <th
-                          rowSpan={2}
-                          className="border border-slate-900 py-1.5 px-2 text-center w-24"
-                        >
-                          JUMLAH
-                          <br />
-                          SIMPANAN
-                        </th>
-                        <th
-                          rowSpan={2}
-                          className="border border-slate-900 py-1.5 px-2 text-center w-24"
-                        >
-                          SHU SIMPANAN
-                          <br />
-                          {lpjData.persenShuSimpananFormatted}
-                        </th>
-                        <th
-                          rowSpan={2}
-                          className="border border-slate-900 py-1.5 px-2 text-center w-24"
-                        >
-                          JUMLAH JASA
-                          <br />
-                          PINJAMAN
-                        </th>
-                        <th
-                          rowSpan={2}
-                          className="border border-slate-900 py-1.5 px-2 text-center w-24"
-                        >
-                          SHU JASA
-                          <br />
-                          {lpjData.persenShuJasaFormatted}
-                        </th>
-                        <th
-                          rowSpan={2}
-                          className="border border-slate-900 py-1.5 px-2 text-center w-24"
-                        >
-                          JUMLAH
-                          <br />
-                          DITERIMA
-                        </th>
-                      </tr>
-                      <tr className="font-bold">
-                        <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                          POKOK
-                        </th>
-                        <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                          WAJIB
-                        </th>
-                        <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                          SUKARELA
-                        </th>
-                        <th className="border border-slate-900 py-1 px-1.5 text-center w-20">
-                          WISATA
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="tabular-nums">
-                      {filteredMemberRows.map((row) => (
-                        <tr key={`shu-${row.memberId}`} className="hover:bg-slate-50">
-                          <td className="border border-slate-900 py-1 px-1.5 text-center">
-                            {row.no}
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2">{row.name}</td>
-                          <td className="border border-slate-900 py-1 px-1.5">
-                            <RpCell value={row.pokok} />
-                          </td>
-                          <td className="border border-slate-900 py-1 px-1.5">
-                            <RpCell value={row.wajib} />
-                          </td>
-                          <td className="border border-slate-900 py-1 px-1.5">
-                            <RpCell value={row.sukarela} />
-                          </td>
-                          <td className="border border-slate-900 py-1 px-1.5">
-                            <RpCell value={row.wisata} />
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2">
-                            <RpCell value={row.jumlahSimpanan} bold />
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2 text-right">
-                            {formatDecimalTwoIndo(row.shuSimpananExact)}
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2">
-                            <RpCell value={row.jumlahJasaPinjaman} />
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2">
-                            <RpCell value={row.shuJasa} />
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2">
-                            <RpCell value={row.jumlahTandaTerimaRat} bold />
-                          </td>
-                        </tr>
-                      ))}
-
-                      <tr className="font-bold bg-slate-50">
-                        <td className="border border-slate-900 py-1.5 px-1.5"></td>
-                        <td className="border border-slate-900 py-1.5 px-2"></td>
-                        <td className="border border-slate-900 py-1.5 px-1.5">
-                          <RpCell value={lpjData.totalSimpananPokok} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-1.5">
-                          <RpCell value={lpjData.totalSimpananWajib} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-1.5">
-                          <RpCell value={lpjData.totalSimpananSukarela} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-1.5">
-                          <RpCell value={lpjData.totalSimpananWisata} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-2">
-                          <RpCell value={lpjData.totalSeluruhSimpanan} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-2 text-right">
-                          {formatDecimalTwoIndo(lpjData.totalShuSimpananExactAnggota)}
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-2">
-                          <RpCell value={lpjData.totalJasaPinjamanAnggota} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-2">
-                          <RpCell value={lpjData.totalShuJasaAnggota} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-2">
-                          <RpCell value={lpjData.totalTandaTerimaRat} bold />
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <LpjPageFooter pageNo={sheet.pageNo} />
               </div>
+            ))}
 
-              <LpjPageFooter pageNo="24-27" />
-            </div>
+            {/* TANDA TERIMA SHU ANGGOTA RAT (PER HALAMAN F4 PORTRAIT PENUH HINGGA MARGIN BAWAH) */}
+            {receiptAppendixPages.map((sheet) => (
+              <div
+                key={`lpj-page-${sheet.pageNo}`}
+                className="f4-sheet-portrait bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[21.5cm] min-h-[33cm] p-6 sm:px-[2.5cm] sm:py-[2cm] text-slate-900 font-sans text-[9pt] leading-[1.3] flex flex-col justify-between"
+              >
+                <div className="space-y-3.5 w-full">
+                  {sheet.showTitleAndHeader && (
+                    <div className="text-center font-bold uppercase space-y-0.5">
+                      <p className="text-[10.5pt]">
+                        TANDA TERIMA SHU ANGGOTA KOPERASI AMANAH BARAYA
+                      </p>
+                      <p className="text-[10.5pt]">RSUD AL MULK KOTA SUKABUMI</p>
+                      <p className="text-[10pt]">
+                        RAT TANGGAL {lpjParams.tanggalRat.toUpperCase()}
+                      </p>
+                    </div>
+                  )}
 
-            {/* PAGES 28 - 31: TANDA TERIMA SHU ANGGOTA RAT TANGGAL 06 MARET 2026 */}
-            <div className="f4-sheet-portrait bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[21.5cm] min-h-[33cm] p-6 sm:p-[2.5cm] text-slate-900 font-sans text-[9.5pt] leading-[1.35] flex flex-col justify-between">
-              <div className="space-y-4">
-                <div className="text-center font-bold uppercase space-y-0.5">
-                  <p className="text-[10.5pt]">
-                    TANDA TERIMA SHU ANGGOTA KOPERASI AMANAH BARAYA
-                  </p>
-                  <p className="text-[10.5pt]">RSUD AL MULK KOTA SUKABUMI</p>
-                  <p className="text-[10pt]">RAT TANGGAL {lpjParams.tanggalRat.toUpperCase()}</p>
+                  <div className="w-full">
+                    <table className="w-full table-fixed border-collapse border border-slate-900 text-[8pt] sm:text-[8.5pt] leading-[1.25]">
+                      <colgroup>
+                        <col style={{ width: '5.5%' }} />
+                        <col style={{ width: '30.5%' }} />
+                        <col style={{ width: '16.0%' }} />
+                        <col style={{ width: '16.0%' }} />
+                        <col style={{ width: '16.0%' }} />
+                        <col style={{ width: '16.0%' }} />
+                      </colgroup>
+                      {sheet.showTitleAndHeader && (
+                        <thead>
+                          <tr className="font-bold">
+                            <th className="border border-slate-900 py-1.5 px-1 text-center">
+                              NO
+                            </th>
+                            <th className="border border-slate-900 py-1.5 px-2 text-center">
+                              NAMA
+                            </th>
+                            <th className="border border-slate-900 py-1.5 px-1.5 text-center">
+                              SUKARELA
+                            </th>
+                            <th className="border border-slate-900 py-1.5 px-1.5 text-center">
+                              SHU SIMPANAN
+                              <br />
+                              {lpjData.persenShuSimpananFormatted}
+                            </th>
+                            <th className="border border-slate-900 py-1.5 px-1.5 text-center">
+                              SHU JASA {lpjData.persenShuJasaFormatted}
+                            </th>
+                            <th className="border border-slate-900 py-1.5 px-1.5 text-center">
+                              JUMLAH
+                              <br />
+                              DITERIMA
+                            </th>
+                          </tr>
+                        </thead>
+                      )}
+                      <tbody className="tabular-nums">
+                        {sheet.rows.map((row) => (
+                          <tr key={`ttd-${row.memberId}`} className="hover:bg-slate-50">
+                            <td className="border border-slate-900 py-[3.8px] px-1 text-center">
+                              {row.no}
+                            </td>
+                            <td className="border border-slate-900 py-[3.8px] px-2 truncate">
+                              {row.name}
+                            </td>
+                            <td className="border border-slate-900 py-[3.8px] px-1.5">
+                              <RpCell value={row.sukarela} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3.8px] px-1.5 text-right whitespace-nowrap">
+                              {formatDecimalTwoIndo(row.shuSimpananExact)}
+                            </td>
+                            <td className="border border-slate-900 py-[3.8px] px-1.5">
+                              <RpCell value={row.shuJasa} compact />
+                            </td>
+                            <td className="border border-slate-900 py-[3.8px] px-1.5">
+                              <RpCell value={row.jumlahTandaTerimaRat} bold compact />
+                            </td>
+                          </tr>
+                        ))}
+
+                        {sheet.isLastPage && (
+                          <tr className="font-bold bg-slate-50">
+                            <td className="border border-slate-900 py-1.5 px-1"></td>
+                            <td className="border border-slate-900 py-1.5 px-2"></td>
+                            <td className="border border-slate-900 py-1.5 px-1.5">
+                              <RpCell value={lpjData.totalSimpananSukarela} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-1.5 px-1.5 text-right whitespace-nowrap">
+                              {formatDecimalTwoIndo(lpjData.totalShuSimpananExactAnggota)}
+                            </td>
+                            <td className="border border-slate-900 py-1.5 px-1.5">
+                              <RpCell value={lpjData.totalShuJasaAnggota} bold compact />
+                            </td>
+                            <td className="border border-slate-900 py-1.5 px-1.5">
+                              <RpCell value={lpjData.totalTandaTerimaRat} bold compact />
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-slate-900 text-[9pt]">
-                    <thead>
-                      <tr className="font-bold">
-                        <th className="border border-slate-900 py-1.5 px-1.5 text-center w-8">
-                          NO
-                        </th>
-                        <th className="border border-slate-900 py-1.5 px-2 text-center">NAMA</th>
-                        <th className="border border-slate-900 py-1.5 px-2 text-center w-24">
-                          SUKARELA
-                        </th>
-                        <th className="border border-slate-900 py-1.5 px-2 text-center w-24">
-                          SHU SIMPANAN
-                          <br />
-                          {lpjData.persenShuSimpananFormatted}
-                        </th>
-                        <th className="border border-slate-900 py-1.5 px-2 text-center w-24">
-                          SHU JASA {lpjData.persenShuJasaFormatted}
-                        </th>
-                        <th className="border border-slate-900 py-1.5 px-2 text-center w-28">
-                          JUMLAH
-                          <br />
-                          DITERIMA
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="tabular-nums">
-                      {filteredMemberRows.map((row) => (
-                        <tr key={`ttd-${row.memberId}`} className="hover:bg-slate-50">
-                          <td className="border border-slate-900 py-1 px-1.5 text-center">
-                            {row.no}
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2">{row.name}</td>
-                          <td className="border border-slate-900 py-1 px-2">
-                            <RpCell value={row.sukarela} />
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2 text-right">
-                            {formatDecimalTwoIndo(row.shuSimpananExact)}
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2">
-                            <RpCell value={row.shuJasa} />
-                          </td>
-                          <td className="border border-slate-900 py-1 px-2">
-                            <RpCell value={row.jumlahTandaTerimaRat} bold />
-                          </td>
-                        </tr>
-                      ))}
-
-                      <tr className="font-bold bg-slate-50">
-                        <td className="border border-slate-900 py-1.5 px-1.5"></td>
-                        <td className="border border-slate-900 py-1.5 px-2"></td>
-                        <td className="border border-slate-900 py-1.5 px-2">
-                          <RpCell value={lpjData.totalSimpananSukarela} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-2 text-right">
-                          {formatDecimalTwoIndo(lpjData.totalShuSimpananExactAnggota)}
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-2">
-                          <RpCell value={lpjData.totalShuJasaAnggota} bold />
-                        </td>
-                        <td className="border border-slate-900 py-1.5 px-2">
-                          <RpCell value={lpjData.totalTandaTerimaRat} bold />
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <LpjPageFooter pageNo={sheet.pageNo} />
               </div>
-
-              <LpjPageFooter pageNo="28-31" />
-            </div>
+            ))}
           </>
         )}
       </div>

@@ -214,5 +214,17 @@ describe('calculateLpjRealtimeData (LPJ RAT Koperasi Amanah Baraya)', () => {
     assert.ok(wordHtml.includes('TAHUN BUKU JANUARI SD DESEMBER 2026'));
     assert.ok(wordHtml.includes('Tabel 1: Perkembangan Data Anggota Tahun 2025 - 2026'));
     assert.ok(wordHtml.includes('RAT TANGGAL 06 MARET 2027'));
+
+    // Verify pages are rendered individually without combined page numbers
+    assert.ok(!wordHtml.includes('20-23'));
+    assert.ok(!wordHtml.includes('24-27'));
+    assert.ok(!wordHtml.includes('28-31'));
+    for (let p = 2; p <= 22; p++) {
+      assert.ok(
+        wordHtml.includes(`>${p}<`) || wordHtml.includes(`\n        ${p}\n`),
+        `Expected individual page footer ${p}`
+      );
+    }
   });
 });
+

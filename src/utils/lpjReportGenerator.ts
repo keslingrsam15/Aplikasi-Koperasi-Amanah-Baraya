@@ -899,10 +899,77 @@ function renderPageFooterHtml(pageNo: number): string {
   </table>`;
 }
 
+export interface LpjAppendixSheet<T> {
+  pageNo: number;
+  rows: T[];
+  showTitleAndHeader: boolean;
+  isLastPage: boolean;
+}
+
+export const LPJ_LANDSCAPE_FIRST_PAGE_ROWS = 28;
+export const LPJ_LANDSCAPE_NEXT_PAGE_ROWS = 32;
+export const LPJ_PORTRAIT_FIRST_PAGE_ROWS = 42;
+export const LPJ_PORTRAIT_NEXT_PAGE_ROWS = 48;
+
+/**
+ * Memecah baris data tabel lampiran LPJ ke halaman-halaman F4 dengan kapasitas maksimal
+ * hingga mendekati batas margin bawah (2,5 cm) sebelum berpindah ke halaman berikutnya,
+ * sehingga tidak menyisakan ruang kosong di bagian bawah halaman.
+ */
+export function paginateAppendixTable<T>(
+  rows: T[],
+  startPageNo: number,
+  firstPageCapacity: number,
+  nextPageCapacity: number,
+  trailingRowsCount: number = 1
+): LpjAppendixSheet<T>[] {
+  if (rows.length === 0) {
+    return [
+      {
+        pageNo: startPageNo,
+        rows: [],
+        showTitleAndHeader: true,
+        isLastPage: true,
+      },
+    ];
+  }
+
+  const chunks: T[][] = [];
+  let cursor = 0;
+
+  const firstSlice = rows.slice(0, firstPageCapacity);
+  chunks.push(firstSlice);
+  cursor += firstSlice.length;
+
+  while (cursor < rows.length) {
+    const slice = rows.slice(cursor, cursor + nextPageCapacity);
+    chunks.push(slice);
+    cursor += slice.length;
+  }
+
+  const lastChunk = chunks[chunks.length - 1];
+  const maxAllowedOnLastPage =
+    chunks.length === 1 ? firstPageCapacity : nextPageCapacity;
+  if (lastChunk.length + trailingRowsCount > maxAllowedOnLastPage + 1) {
+    const overflowCount = lastChunk.length + trailingRowsCount - maxAllowedOnLastPage;
+    const keepInPrev = lastChunk.slice(0, lastChunk.length - overflowCount);
+    const moveToNext = lastChunk.slice(lastChunk.length - overflowCount);
+    chunks[chunks.length - 1] = keepInPrev;
+    chunks.push(moveToNext);
+  }
+
+  return chunks.map((chunkRows, idx) => ({
+    pageNo: startPageNo + idx,
+    rows: chunkRows,
+    showTitleAndHeader: idx === 0,
+    isLastPage: idx === chunks.length - 1,
+  }));
+}
+
 /**
  * Menghasilkan dokumen Microsoft Word (.doc) ukuran kertas F4 (21,5 cm x 33,0 cm)
  * dengan margin Atas, Bawah, Kiri, Kanan 2,5 cm yang 100% identik dengan
- * contoh laporan LPJ RAT Koperasi Amanah Baraya (Halaman 1 s/d Halaman 31).
+ * contoh laporan LPJ RAT Koperasi Amanah Baraya.
  */
 export function generateLpjWordHtml(
   data: LpjRealtimeData,
@@ -944,9 +1011,9 @@ export function generateLpjWordHtml(
       ? ((data.sisaPinjaman / data.pemberianPinjaman) * 100).toFixed(1).replace('.', ',')
       : '0';
 
-  const memberDebtRowsHtml = data.memberRows
-    .map(
-      (r) => `
+  type MemberRowItem = LpjRealtimeData['memberRows'][number];
+
+  const renderDebtRow = (r: MemberRowItem) => `
       <tr>
         <td style="text-align:center;">${r.no}</td>
         <td>${r.name}</td>
@@ -961,9 +1028,7 @@ export function generateLpjWordHtml(
         <td style="text-align:right;font-weight:bold;">${fRpCell(r.jumlahPiutang)}</td>
         <td style="text-align:right;">${fRpCell(r.jumlahJasaPinjaman)}</td>
         <td style="text-align:center;">${r.keterangan}</td>
-      </tr>`
-    )
-    .join('');
+      </tr>`;
 
   const nonMemberDebtRowsHtml = data.nonMemberRows
     .map(
@@ -986,9 +1051,7 @@ export function generateLpjWordHtml(
     )
     .join('');
 
-  const memberShuRowsHtml = data.memberRows
-    .map(
-      (r) => `
+  const renderShuRow = (r: MemberRowItem) => `
       <tr>
         <td style="text-align:center;">${r.no}</td>
         <td>${r.name}</td>
@@ -1001,23 +1064,60 @@ export function generateLpjWordHtml(
         <td style="text-align:right;">${fRpCell(r.jumlahJasaPinjaman)}</td>
         <td style="text-align:right;">${fRpCell(r.shuJasa)}</td>
         <td style="text-align:right;font-weight:bold;">${fRpCell(r.jumlahTandaTerimaRat)}</td>
-      </tr>`
-    )
-    .join('');
+      </tr>`;
 
-  const memberReceiptRowsHtml = data.memberRows
-    .map(
-      (r) => `
+  const renderReceiptRow = (r: MemberRowItem) => `
       <tr>
-        <td style="text-align:center;height:22pt;">${r.no}</td>
+        <td style="text-align:center;height:20pt;">${r.no}</td>
         <td>${r.name}</td>
         <td style="text-align:right;">${fRpCell(r.sukarela)}</td>
         <td style="text-align:right;">${formatDecimalTwoIndo(r.shuSimpananExact)}</td>
         <td style="text-align:right;">${fRpCell(r.shuJasa)}</td>
         <td style="text-align:right;font-weight:bold;">${fRpCell(r.jumlahTandaTerimaRat)}</td>
-      </tr>`
-    )
-    .join('');
+      </tr>`;
+
+  const debtColgroupHtml = `
+    <colgroup>
+      <col style="width:2.6%;" />
+      <col style="width:15.4%;" />
+      <col style="width:6.4%;" />
+      <col style="width:6.8%;" />
+      <col style="width:7.5%;" />
+      <col style="width:6.5%;" />
+      <col style="width:8.2%;" />
+      <col style="width:7.8%;" />
+      <col style="width:7.2%;" />
+      <col style="width:7.4%;" />
+      <col style="width:8.2%;" />
+      <col style="width:7.8%;" />
+      <col style="width:8.2%;" />
+    </colgroup>`;
+
+  const shuColgroupHtml = `
+    <colgroup>
+      <col style="width:3.0%;" />
+      <col style="width:18.0%;" />
+      <col style="width:7.5%;" />
+      <col style="width:7.8%;" />
+      <col style="width:8.5%;" />
+      <col style="width:7.5%;" />
+      <col style="width:9.5%;" />
+      <col style="width:9.2%;" />
+      <col style="width:9.5%;" />
+      <col style="width:9.5%;" />
+      <col style="width:10.0%;" />
+    </colgroup>`;
+
+  const receiptColgroupHtml = `
+    <colgroup>
+      <col style="width:5.5%;" />
+      <col style="width:30.5%;" />
+      <col style="width:16.0%;" />
+      <col style="width:16.0%;" />
+      <col style="width:16.0%;" />
+      <col style="width:16.0%;" />
+    </colgroup>`;
+
 
   return `
 <!DOCTYPE html>
@@ -1092,13 +1192,14 @@ export function generateLpjWordHtml(
     }
     table.lampiran {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       margin: 6pt 0;
-      font-size: 8.5pt;
+      font-size: 7pt;
     }
     table.lampiran th, table.lampiran td {
       border: 1px solid #000000;
-      padding: 2.5pt 4pt;
+      padding: 2pt 3pt;
       vertical-align: middle;
     }
     table.lampiran th {
@@ -2085,24 +2186,51 @@ export function generateLpjWordHtml(
   ${renderPageFooterHtml(19)}
 </div>
 
-<!-- ==================== HALAMAN 20-27: LAMPIRAN LANDSCAPE F4 (MARGIN 2,5 CM) ==================== -->
+<!-- ==================== LAMPIRAN LANDSCAPE F4 (REKAP SIMPANAN & SISA HUTANG + REKAP SHU, MARGIN 2,5 CM) ==================== -->
 <div class="SectionLandscapeF4">
+  ${(() => {
+    const debtPages = paginateAppendixTable(
+      data.memberRows,
+      20,
+      LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
+      LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+      data.nonMemberRows.length + 1
+    );
+    const shuStartPage = 20 + debtPages.length;
+    const shuPages = paginateAppendixTable(
+      data.memberRows,
+      shuStartPage,
+      LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
+      LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+      1
+    );
+
+    const debtHtml = debtPages
+      .map(
+        (sheet) => `
+  <!-- HALAMAN ${sheet.pageNo} -->
   <div class="page-break"></div>
-  <div class="center" style="font-weight:bold;font-size:10pt;margin-bottom:8pt;">
+  ${
+    sheet.showTitleAndHeader
+      ? `<div class="center" style="font-weight:bold;font-size:9.5pt;margin-bottom:6pt;">
     REKAP SIMPANAN ANGGOTA KOPERASI AMANAH BARAYA<br/>
     RSUD AL MULK KOTA SUKABUMI<br/>
     PER : ${params.tanggalTutupBuku.toUpperCase()}
-  </div>
-
+  </div>`
+      : ''
+  }
   <table class="lampiran">
-    <thead>
+    ${debtColgroupHtml}
+    ${
+      sheet.showTitleAndHeader
+        ? `<thead>
       <tr>
-        <th rowspan="2" style="width:26px;">NO</th>
+        <th rowspan="2">NO</th>
         <th rowspan="2">NAMA</th>
         <th colspan="4">SIMPANAN KOPERASI</th>
         <th rowspan="2">JUMLAH<br/>SIMPANAN</th>
         <th colspan="3">SISA HUTANG</th>
-        <th rowspan="2">JUMLAH PIUTANG</th>
+        <th rowspan="2">JUMLAH<br/>PIUTANG</th>
         <th rowspan="2">JUMLAH JASA<br/>PINJAMAN</th>
         <th rowspan="2">KETERANGAN</th>
       </tr>
@@ -2115,11 +2243,15 @@ export function generateLpjWordHtml(
         <th>HUTANG<br/>BARANG</th>
         <th>KEKURANGAN<br/>KARYAWISATA</th>
       </tr>
-    </thead>
+    </thead>`
+        : ''
+    }
     <tbody>
-      ${memberDebtRowsHtml}
-      ${nonMemberDebtRowsHtml}
-      <tr style="font-weight:bold;">
+      ${sheet.rows.map(renderDebtRow).join('')}
+      ${sheet.isLastPage ? nonMemberDebtRowsHtml : ''}
+      ${
+        sheet.isLastPage
+          ? `<tr style="font-weight:bold;">
         <td></td>
         <td></td>
         <td>${fRpCell(data.totalSimpananPokok)}</td>
@@ -2133,23 +2265,36 @@ export function generateLpjWordHtml(
         <td>${fRpCell(data.totalPiutangAnggota)}</td>
         <td>${fRpCell(data.totalJasaPinjamanAnggota)}</td>
         <td></td>
-      </tr>
+      </tr>`
+          : ''
+      }
     </tbody>
   </table>
-  ${renderPageFooterHtml(23)}
+  ${renderPageFooterHtml(sheet.pageNo)}`
+      )
+      .join('\n');
 
-  <!-- ==================== HALAMAN 24-27: REKAP SIMPANAN & SHU ANGGOTA ==================== -->
+    const shuHtml = shuPages
+      .map(
+        (sheet) => `
+  <!-- HALAMAN ${sheet.pageNo} -->
   <div class="page-break"></div>
-  <div class="center" style="font-weight:bold;font-size:10pt;margin-bottom:8pt;">
+  ${
+    sheet.showTitleAndHeader
+      ? `<div class="center" style="font-weight:bold;font-size:9.5pt;margin-bottom:6pt;">
     REKAP SIMPANAN ANGGOTA KOPERASI AMANAH BARAYA<br/>
     RSUD AL MULK KOTA SUKABUMI<br/>
     BULAN DESEMBER ${params.tahunBuku}
-  </div>
-
+  </div>`
+      : ''
+  }
   <table class="lampiran">
-    <thead>
+    ${shuColgroupHtml}
+    ${
+      sheet.showTitleAndHeader
+        ? `<thead>
       <tr>
-        <th rowspan="2" style="width:26px;">NO</th>
+        <th rowspan="2">NO</th>
         <th rowspan="2">NAMA</th>
         <th colspan="4">SIMPANAN KOPERASI</th>
         <th rowspan="2">JUMLAH<br/>SIMPANAN</th>
@@ -2164,10 +2309,14 @@ export function generateLpjWordHtml(
         <th>SUKARELA</th>
         <th>WISATA</th>
       </tr>
-    </thead>
+    </thead>`
+        : ''
+    }
     <tbody>
-      ${memberShuRowsHtml}
-      <tr style="font-weight:bold;">
+      ${sheet.rows.map(renderShuRow).join('')}
+      ${
+        sheet.isLastPage
+          ? `<tr style="font-weight:bold;">
         <td></td>
         <td></td>
         <td>${fRpCell(data.totalSimpananPokok)}</td>
@@ -2179,45 +2328,95 @@ export function generateLpjWordHtml(
         <td>${fRpCell(data.totalJasaPinjamanAnggota)}</td>
         <td>${fRpCell(data.totalShuJasaAnggota)}</td>
         <td>${fRpCell(data.totalTandaTerimaRat)}</td>
-      </tr>
+      </tr>`
+          : ''
+      }
     </tbody>
   </table>
-  ${renderPageFooterHtml(27)}
+  ${renderPageFooterHtml(sheet.pageNo)}`
+      )
+      .join('\n');
+
+    return `${debtHtml}\n${shuHtml}`;
+  })()}
 </div>
 
-<!-- ==================== HALAMAN 28-31: TANDA TERIMA SHU ANGGOTA (PORTRAIT F4, MARGIN 2,5 CM) ==================== -->
+<!-- ==================== LAMPIRAN TANDA TERIMA SHU ANGGOTA (PORTRAIT F4, MARGIN 2,5 CM) ==================== -->
 <div class="SectionPortraitF4">
+  ${(() => {
+    const debtPagesCount = paginateAppendixTable(
+      data.memberRows,
+      20,
+      LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
+      LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+      data.nonMemberRows.length + 1
+    ).length;
+    const shuPagesCount = paginateAppendixTable(
+      data.memberRows,
+      20 + debtPagesCount,
+      LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
+      LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+      1
+    ).length;
+    const receiptStartPage = 20 + debtPagesCount + shuPagesCount;
+    const receiptPages = paginateAppendixTable(
+      data.memberRows,
+      receiptStartPage,
+      LPJ_PORTRAIT_FIRST_PAGE_ROWS,
+      LPJ_PORTRAIT_NEXT_PAGE_ROWS,
+      1
+    );
+
+    return receiptPages
+      .map(
+        (sheet) => `
+  <!-- HALAMAN ${sheet.pageNo} -->
   <div class="page-break"></div>
-  <div class="center" style="font-weight:bold;font-size:10.5pt;margin-bottom:8pt;">
+  ${
+    sheet.showTitleAndHeader
+      ? `<div class="center" style="font-weight:bold;font-size:10.5pt;margin-bottom:8pt;">
     TANDA TERIMA SHU ANGGOTA KOPERASI AMANAH BARAYA<br/>
     RSUD AL MULK KOTA SUKABUMI<br/>
     RAT TANGGAL ${params.tanggalRat.toUpperCase()}
-  </div>
-
-  <table class="lampiran" style="font-size:9pt;">
-    <thead>
+  </div>`
+      : ''
+  }
+  <table class="lampiran" style="font-size:8.5pt;">
+    ${receiptColgroupHtml}
+    ${
+      sheet.showTitleAndHeader
+        ? `<thead>
       <tr>
-        <th style="width:28px;">NO</th>
+        <th>NO</th>
         <th>NAMA</th>
         <th>SUKARELA</th>
         <th>SHU SIMPANAN<br/>${data.persenShuSimpananFormatted}</th>
         <th>SHU JASA ${data.persenShuJasaFormatted}</th>
         <th>JUMLAH<br/>DITERIMA</th>
       </tr>
-    </thead>
+    </thead>`
+        : ''
+    }
     <tbody>
-      ${memberReceiptRowsHtml}
-      <tr style="font-weight:bold;">
+      ${sheet.rows.map(renderReceiptRow).join('')}
+      ${
+        sheet.isLastPage
+          ? `<tr style="font-weight:bold;">
         <td></td>
         <td></td>
         <td>${fRpCell(data.totalSimpananSukarela)}</td>
         <td class="right">${formatDecimalTwoIndo(data.totalShuSimpananExactAnggota)}</td>
         <td>${fRpCell(data.totalShuJasaAnggota)}</td>
         <td>${fRpCell(data.totalTandaTerimaRat)}</td>
-      </tr>
+      </tr>`
+          : ''
+      }
     </tbody>
   </table>
-  ${renderPageFooterHtml(31)}
+  ${renderPageFooterHtml(sheet.pageNo)}`
+      )
+      .join('\n');
+  })()}
 </div>
 
 </body>
