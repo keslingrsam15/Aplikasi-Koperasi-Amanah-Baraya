@@ -209,7 +209,15 @@ export function App() {
   });
 
   // Navigation & Modal states
-  const [appStage, setAppStage] = useState<'welcome' | 'select-account' | 'main'>('welcome');
+  const [appStage, setAppStage] = useState<'welcome' | 'select-account' | 'main'>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('autostart') === '1') return 'main';
+    } catch {
+      // ignore
+    }
+    return 'welcome';
+  });
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);

@@ -1,27 +1,21 @@
 import React, { useState } from 'react';
 import { Member, LoanRecord, LoanStatus } from '../../types';
-import { formatRupiah, formatDateIndo, exportToCSV } from '../../utils/formatters';
+import { formatRupiah } from '../../utils/formatters';
+import { calculateLoanInstallmentProgress } from '../../utils/loanCalculator';
 import confetti from 'canvas-confetti';
 import {
   CreditCard,
   PlusCircle,
   Search,
-  Filter,
-  Download,
   Calendar,
   CheckCircle2,
   Clock,
-  XCircle,
-  DollarSign,
   User,
   Calculator,
-  ArrowRight,
   X,
   Save,
   Check,
-  AlertTriangle,
   Building2,
-  FileSpreadsheet,
 } from 'lucide-react';
 
 interface LoanManagementProps {
@@ -132,9 +126,12 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
   };
 
   const handleOpenPayModal = (loan: LoanRecord) => {
+    const progress = calculateLoanInstallmentProgress(loan);
     setSelectedLoanForPayment(loan);
     setPayAmount(Math.min(loan.monthlyInstallment, loan.remainingAmount));
-    setPayNotes(`Angsuran Pinjaman ${loan.loanNumber}`);
+    setPayNotes(
+      `Angsuran ke-${progress.nextInstallmentNumber} dari ${progress.tenorMonths} bulan (${loan.loanNumber})`
+    );
     setIsPayModalOpen(true);
   };
 
@@ -230,56 +227,6 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
     onUpdateLoan(updated);
   };
 
-  const handleExportCSV = () => {
-    const headers = [
-      'No',
-      'No. Pinjaman',
-      'Nomor Anggota',
-      'Nama Anggota',
-      'Unit Kerja RSUD',
-      'Plafon Pokok (Rp)',
-      'Tenor (Bulan)',
-      'Jasa (% / Bln)',
-      'Angsuran / Bln (Rp)',
-      'Total Pelunasan (Rp)',
-      'Sudah Dibayar (Rp)',
-      'Sisa Piutang (Rp)',
-      'Progres (%)',
-      'Status',
-      'Keperluan',
-    ];
-
-    const rows = filteredLoans.map((l, idx) => {
-      const pct = l.totalRepayment > 0 ? Math.round((l.totalPaid / l.totalRepayment) * 100) : 0;
-      return [
-        idx + 1,
-        l.loanNumber,
-        l.memberNumber,
-        l.memberName,
-        l.unitKerja,
-        l.amount,
-        l.tenorMonths,
-        l.interestRate,
-        l.monthlyInstallment,
-        l.totalRepayment,
-        l.totalPaid,
-        l.remainingAmount,
-        `${pct}%`,
-        l.status.toUpperCase(),
-        l.purpose,
-      ];
-    });
-
-    exportToCSV(`Laporan_Pinjaman_Koperasi_RSUD_${new Date().toISOString().slice(0, 10)}.csv`, [
-      ['LAPORAN PINJAMAN ANGGOTA KOPERASI AMANAH BARAYA - RSUD AL-MULK'],
-      [`Total Plafon Disalurkan: ${formatRupiah(totalDisbursed)}`],
-      [`Sisa Piutang Berjalan: ${formatRupiah(totalRemainingReceivable)}`],
-      [],
-      headers,
-      ...rows,
-    ]);
-  };
-
   return (
     <div className="space-y-6">
       {/* Metrics Summary */}
@@ -364,16 +311,8 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={handleExportCSV}
-            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl text-xs flex items-center gap-1.5 transition"
-          >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Export CSV</span>
-          </button>
-
-          <button
             onClick={() => handleOpenApplyModal()}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 whitespace-nowrap shrink-0"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Pengajuan Pinjaman Baru</span>
@@ -383,12 +322,19 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
 
       {/* Loans List Table */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="p-5 sm:px-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="font-bold text-slate-900 text-sm">Daftar Pinjaman & Angsuran Anggota</h3>
-            <p className="text-xs text-slate-500">
-              Total {filteredLoans.length} pinjaman terdata
+            <h3 className="font-bold text-slate-900 text-sm tracking-tight">
+              Daftar Pinjaman & Angsuran Anggota
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Total {filteredLoans.length} pinjaman terdata &bull; Pantau progres cicilan dan sisa bulan tenor anggota
             </p>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-slate-500 font-medium tabular-nums">
+            <span>{activeLoans.length} Pinjaman Berjalan</span>
+            <span aria-hidden="true">&bull;</span>
+            <span>{totalPaidLoans} Pinjaman Lunas</span>
           </div>
         </div>
 
@@ -403,90 +349,128 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+              <thead className="bg-slate-50/90 border-b border-slate-200/80 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="p-4 w-12 text-center">No</th>
-                  <th className="p-4">No. Pinjaman & Anggota</th>
-                  <th className="p-4">Unit Kerja</th>
-                  <th className="p-4 text-right">Plafon & Tenor</th>
-                  <th className="p-4 text-right">Angsuran/Bln</th>
-                  <th className="p-4 min-w-[200px]">Progres Pelunasan & Sisa</th>
-                  <th className="p-4 text-center">Status</th>
-                  <th className="p-4 text-center">Aksi</th>
+                  <th className="py-3.5 px-3 w-10 text-center">No</th>
+                  <th className="py-3.5 px-3">No. Pinjaman & Anggota</th>
+                  <th className="py-3.5 px-3">Unit Kerja</th>
+                  <th className="py-3.5 px-3 text-right">Plafon & Tenor</th>
+                  <th className="py-3.5 px-3 text-right">Angsuran/Bln</th>
+                  <th className="py-3.5 px-3.5 w-[245px]">Progres Pelunasan & Sisa</th>
+                  <th className="py-3.5 px-3 text-center">Status</th>
+                  <th className="py-3.5 px-3 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredLoans.map((loan, index) => {
-                  const percentPaid =
-                    loan.totalRepayment > 0
-                      ? Math.min(100, Math.round((loan.totalPaid / loan.totalRepayment) * 100))
-                      : 0;
+                  const progress = calculateLoanInstallmentProgress(loan);
 
                   return (
-                    <tr key={loan.id} className="hover:bg-slate-50/60 transition">
-                      <td className="p-4 text-center font-bold text-slate-400">{index + 1}</td>
-                      <td className="p-4">
-                        <div className="font-mono font-bold text-emerald-800 text-xs">
+                    <tr
+                      key={loan.id}
+                      className="hover:bg-slate-50/70 transition-colors duration-150 group"
+                    >
+                      <td className="py-4 px-3 text-center font-bold text-slate-400 tabular-nums">
+                        {index + 1}
+                      </td>
+                      <td className="py-4 px-3 max-w-[210px]">
+                        <div className="font-mono font-bold text-emerald-700 text-xs tracking-tight">
                           {loan.loanNumber}
                         </div>
-                        <div className="font-bold text-slate-900 mt-0.5">{loan.memberName}</div>
-                        <div className="font-mono text-[10px] text-slate-400">
-                          {loan.memberNumber} &bull; Tujuan: {loan.purpose}
+                        <div className="font-bold text-slate-900 text-xs mt-0.5">
+                          {loan.memberName}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 leading-snug">
+                          <span className="font-mono">{loan.memberNumber}</span> &bull; Tujuan: {loan.purpose}
                         </div>
                       </td>
-                      <td className="p-4">
-                        <div className="font-semibold text-slate-700 flex items-center gap-1">
-                          <Building2 className="w-3 h-3 text-slate-400" />
+                      <td className="py-4 px-3 whitespace-nowrap">
+                        <div className="font-semibold text-slate-700 flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span>{loan.unitKerja}</span>
                         </div>
                       </td>
-                      <td className="p-4 text-right">
-                        <div className="font-black text-slate-900">{formatRupiah(loan.amount)}</div>
-                        <div className="text-[10px] text-slate-500">
+                      <td className="py-4 px-3 text-right tabular-nums whitespace-nowrap">
+                        <div className="font-black text-slate-900 text-xs">
+                          {formatRupiah(loan.amount)}
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">
                           {loan.tenorMonths} Bulan ({loan.interestRate}%/bln)
                         </div>
                       </td>
-                      <td className="p-4 text-right">
-                        <div className="font-bold text-slate-800">
+                      <td className="py-4 px-3 text-right tabular-nums whitespace-nowrap">
+                        <div className="font-bold text-slate-900 text-xs">
                           {formatRupiah(loan.monthlyInstallment)}
                         </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">per bulan</div>
                       </td>
-                      <td className="p-4">
+                      <td className="py-4 px-3.5">
                         <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px] font-bold">
-                            <span className="text-emerald-700">{percentPaid}%</span>
-                            <span className="text-rose-600">
+                          {/* Row 1: Percentage + Paid Months vs Remaining Rupiah */}
+                          <div className="flex items-center justify-between gap-2 text-[11px] tabular-nums">
+                            <div className="flex items-center gap-1">
+                              <span className="font-extrabold text-emerald-700">
+                                {progress.percentPaid}%
+                              </span>
+                              <span className="text-slate-300" aria-hidden="true">
+                                &bull;
+                              </span>
+                              <span className="font-semibold text-slate-600 text-[10px]">
+                                {progress.paidMonths}/{progress.tenorMonths} bln
+                              </span>
+                            </div>
+                            <span
+                              className={`font-bold ${
+                                progress.isFullyPaid ? 'text-emerald-600' : 'text-rose-600'
+                              }`}
+                            >
                               Sisa: {formatRupiah(loan.remainingAmount)}
                             </span>
                           </div>
-                          {/* Progress Bar Visual */}
-                          <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+
+                          {/* Row 2: Progress Bar Visual */}
+                          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden ring-1 ring-slate-200/70">
                             <div
-                              className={`h-full transition-all duration-500 ${
-                                percentPaid >= 100
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                progress.isFullyPaid
                                   ? 'bg-emerald-600'
-                                  : percentPaid >= 50
-                                  ? 'bg-blue-600'
+                                  : progress.percentPaid >= 50
+                                  ? 'bg-teal-600'
                                   : 'bg-amber-500'
                               }`}
-                              style={{ width: `${percentPaid}%` }}
+                              style={{ width: `${progress.percentPaid}%` }}
                             />
                           </div>
-                          <div className="text-[10px] text-slate-400 text-right">
-                            Terbayar: {formatRupiah(loan.totalPaid)} / {formatRupiah(loan.totalRepayment)}
+
+                          {/* Row 3: Remaining Months Keterangan & Total Terbayar */}
+                          <div className="flex items-center justify-between gap-2 pt-0.5">
+                            {progress.isFullyPaid ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 whitespace-nowrap">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>Angsuran Lunas</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 whitespace-nowrap">
+                                <Calendar className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span>{progress.remainingMonthsLabel}</span>
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-400 text-right tabular-nums whitespace-nowrap">
+                              {formatRupiah(loan.totalPaid)} / {formatRupiah(loan.totalRepayment)}
+                            </span>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="py-4 px-3 text-center whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide whitespace-nowrap ${
                             loan.status === 'paid'
-                              ? 'bg-emerald-100 text-emerald-800'
+                              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
                               : loan.status === 'active'
-                              ? 'bg-blue-100 text-blue-800'
+                              ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
                               : loan.status === 'pending'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-rose-100 text-rose-800'
+                              ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                              : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
                           }`}
                         >
                           {loan.status === 'paid'
@@ -498,7 +482,7 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
                             : 'Ditolak'}
                         </span>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="py-4 px-3 text-center whitespace-nowrap">
                         {loan.status === 'active' ? (
                           <button
                             onClick={() => handleOpenPayModal(loan)}
@@ -524,7 +508,10 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
                             </button>
                           </div>
                         ) : (
-                          <span className="text-slate-400 font-medium text-[11px]">Selesai</span>
+                          <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[11px] whitespace-nowrap">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Selesai</span>
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -735,132 +722,172 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
       )}
 
       {/* Modal Bayar Angsuran */}
-      {isPayModalOpen && selectedLoanForPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">Pembayaran Angsuran Pinjaman</h3>
-                  <p className="text-xs text-slate-500 font-mono">
-                    {selectedLoanForPayment.loanNumber} &bull; {selectedLoanForPayment.memberName}
-                  </p>
-                </div>
-              </div>
+      {isPayModalOpen && selectedLoanForPayment && (() => {
+        const currentProgress = calculateLoanInstallmentProgress(selectedLoanForPayment);
+        const simulatedTotalPaid = selectedLoanForPayment.totalPaid + payAmount;
+        const simulatedRemaining = Math.max(0, selectedLoanForPayment.totalRepayment - simulatedTotalPaid);
+        const afterPaymentProgress = calculateLoanInstallmentProgress({
+          ...selectedLoanForPayment,
+          totalPaid: simulatedTotalPaid,
+          remainingAmount: simulatedRemaining,
+          status: simulatedRemaining === 0 ? 'paid' : 'active',
+        });
 
-              <button
-                onClick={handleClosePayModal}
-                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-base">Pembayaran Angsuran Pinjaman</h3>
+                    <p className="text-xs text-slate-500 font-mono">
+                      {selectedLoanForPayment.loanNumber} &bull; {selectedLoanForPayment.memberName}
+                    </p>
+                  </div>
+                </div>
 
-            <form onSubmit={handlePaySubmit} className="space-y-3.5 text-xs">
-              {/* Summary of current loan */}
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">Angsuran Rutin:</span>
-                  <span className="font-bold text-slate-800">
-                    {formatRupiah(selectedLoanForPayment.monthlyInstallment)} / bulan
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500">Total Terbayar:</span>
-                  <span className="font-bold text-emerald-700">
-                    {formatRupiah(selectedLoanForPayment.totalPaid)} /{' '}
-                    {formatRupiah(selectedLoanForPayment.totalRepayment)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-200">
-                  <span className="font-bold text-slate-700">Sisa Piutang:</span>
-                  <span className="font-black text-rose-600 text-sm">
-                    {formatRupiah(selectedLoanForPayment.remainingAmount)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Nominal Pembayaran */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Nominal Pembayaran Angsuran (Rp): <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2 text-slate-400 font-bold">Rp</span>
-                  <input
-                    type="number"
-                    required
-                    min="1000"
-                    max={selectedLoanForPayment.remainingAmount}
-                    value={payAmount}
-                    onChange={(e) => setPayAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Quick Bayar Button */}
-              <div className="flex gap-2">
                 <button
-                  type="button"
-                  onClick={() =>
-                    setPayAmount(
-                      Math.min(
+                  onClick={handleClosePayModal}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handlePaySubmit} className="space-y-3.5 text-xs">
+                {/* Summary of current loan */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 tabular-nums">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Angsuran Rutin:</span>
+                    <span className="font-bold text-slate-800">
+                      {formatRupiah(selectedLoanForPayment.monthlyInstallment)} / bulan
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Progres Tenor Saat Ini:</span>
+                    <span className="font-bold text-amber-700">
+                      {currentProgress.paidMonths}/{currentProgress.tenorMonths} Bulan ({currentProgress.remainingMonthsLabel})
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Total Terbayar:</span>
+                    <span className="font-bold text-emerald-700">
+                      {formatRupiah(selectedLoanForPayment.totalPaid)} /{' '}
+                      {formatRupiah(selectedLoanForPayment.totalRepayment)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs pt-1.5 border-t border-slate-200">
+                    <span className="font-bold text-slate-700">Sisa Piutang:</span>
+                    <span className="font-black text-rose-600 text-sm">
+                      {formatRupiah(selectedLoanForPayment.remainingAmount)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live Preview After Payment */}
+                <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-center justify-between gap-2 tabular-nums">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="text-slate-700 font-semibold">
+                      Setelah pembayaran ini:
+                    </span>
+                  </div>
+                  <span className="font-extrabold text-emerald-800">
+                    {afterPaymentProgress.isFullyPaid
+                      ? `Angsuran Lunas (${afterPaymentProgress.tenorMonths}/${afterPaymentProgress.tenorMonths} bln)`
+                      : `${afterPaymentProgress.remainingMonthsLabel} (${afterPaymentProgress.paidMonths}/${afterPaymentProgress.tenorMonths} bln)`}
+                  </span>
+                </div>
+
+                {/* Nominal Pembayaran */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Nominal Pembayaran Angsuran (Rp): <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-slate-400 font-bold">Rp</span>
+                    <input
+                      type="number"
+                      required
+                      min="1000"
+                      max={selectedLoanForPayment.remainingAmount}
+                      value={payAmount}
+                      onChange={(e) => setPayAmount(parseFloat(e.target.value) || 0)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500 text-sm tabular-nums"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Bayar Button */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const amt = Math.min(
                         selectedLoanForPayment.monthlyInstallment,
                         selectedLoanForPayment.remainingAmount
-                      )
-                    )
-                  }
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-[11px]"
-                >
-                  Bayar 1 Bulan ({formatRupiah(selectedLoanForPayment.monthlyInstallment)})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPayAmount(selectedLoanForPayment.remainingAmount)}
-                  className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-xl text-[11px]"
-                >
-                  Lunasi Sekaligus ({formatRupiah(selectedLoanForPayment.remainingAmount)})
-                </button>
-              </div>
+                      );
+                      setPayAmount(amt);
+                      setPayNotes(
+                        `Angsuran ke-${currentProgress.nextInstallmentNumber} dari ${currentProgress.tenorMonths} bulan (${selectedLoanForPayment.loanNumber})`
+                      );
+                    }}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-[11px] tabular-nums transition"
+                  >
+                    Bayar 1 Bulan ({formatRupiah(selectedLoanForPayment.monthlyInstallment)})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayAmount(selectedLoanForPayment.remainingAmount);
+                      setPayNotes(
+                        `Pelunasan Sisa ${currentProgress.remainingMonths} Bulan (${selectedLoanForPayment.loanNumber})`
+                      );
+                    }}
+                    className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-xl text-[11px] tabular-nums transition"
+                  >
+                    Lunasi Sekaligus ({formatRupiah(selectedLoanForPayment.remainingAmount)})
+                  </button>
+                </div>
 
-              {/* Catatan / Keterangan */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Catatan Pembayaran:
-                </label>
-                <input
-                  type="text"
-                  value={payNotes}
-                  onChange={(e) => setPayNotes(e.target.value)}
-                  placeholder="Contoh: Angsuran ke-3 tunai / potong payroll"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
+                {/* Catatan / Keterangan */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Catatan Pembayaran:
+                  </label>
+                  <input
+                    type="text"
+                    value={payNotes}
+                    onChange={(e) => setPayNotes(e.target.value)}
+                    placeholder="Contoh: Angsuran ke-3 tunai / potong payroll"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleClosePayModal}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Konfirmasi Pembayaran</span>
-                </button>
-              </div>
-            </form>
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={handleClosePayModal}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition flex items-center gap-1.5 active:scale-95"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Konfirmasi Pembayaran</span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
