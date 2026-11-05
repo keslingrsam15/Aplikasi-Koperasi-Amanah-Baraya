@@ -4,6 +4,42 @@ import { X, UserCheck, Save, Plus, Check } from 'lucide-react';
 
 const STORAGE_UNIT_KEY = 'koperasi_rsud_unit_kerja_list';
 
+// Daftar unit kerja resmi RSUD Al-Mulk Kota Sukabumi
+export const DEFAULT_UNIT_KERJA_OPTIONS: string[] = [
+  'Manajemen',
+  'Penunjang',
+  'Pendaftaran',
+  'RM',
+  'Farmasi',
+  'Laboratorium',
+  'Radiologi',
+  'IGD',
+  'Usman',
+  'Fatimah',
+  'Khadijah',
+  'Aisyah',
+  'IBS',
+  'ICU',
+  'CSSD',
+  'Kebersihan',
+  'IPSRS',
+  'Kesling',
+  'Humas',
+  'Ambulance',
+  'Lainnya',
+];
+
+const mergeUnits = (customList: string[]): string[] => {
+  const result = [...DEFAULT_UNIT_KERJA_OPTIONS];
+  customList.forEach((item) => {
+    const trimmed = item.trim();
+    if (trimmed && !result.some((r) => r.toLowerCase() === trimmed.toLowerCase())) {
+      result.push(trimmed);
+    }
+  });
+  return result;
+};
+
 interface MemberFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,13 +55,17 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
   memberToEdit,
   existingMembersCount,
 }) => {
-  // Dropdown options for Unit Kerja - starts empty, populated when user adds units
+  // Pilihan Unit Kerja bawaan RSUD Al-Mulk yang dapat digabung dengan unit tersimpan lokal
   const [savedUnits, setSavedUnits] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_UNIT_KEY);
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        const parsed: string[] = JSON.parse(saved);
+        return mergeUnits(parsed);
+      }
+      return DEFAULT_UNIT_KERJA_OPTIONS;
     } catch {
-      return [];
+      return DEFAULT_UNIT_KERJA_OPTIONS;
     }
   });
 
@@ -52,7 +92,10 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
     if (memberToEdit) {
       setFormData({ ...memberToEdit });
       setUnitInput(memberToEdit.unitKerja || '');
-      if (memberToEdit.unitKerja && !savedUnits.includes(memberToEdit.unitKerja)) {
+      if (
+        memberToEdit.unitKerja &&
+        !savedUnits.some((u) => u.toLowerCase() === memberToEdit.unitKerja?.toLowerCase())
+      ) {
         const updated = [...savedUnits, memberToEdit.unitKerja];
         setSavedUnits(updated);
         try {
@@ -232,17 +275,15 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
             </div>
           </div>
 
-          {/* Baris 3: Unit Kerja (Dropdown kosong bawaan, ketik manual & fitur tambah unit kerja) */}
+          {/* Baris 3: Unit Kerja (Pilihan Resmi RSUD Al-Mulk & Ketik Manual) */}
           <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2">
             <div className="flex items-center justify-between">
               <label className="block font-bold text-slate-800">
                 Unit Kerja <span className="text-rose-500">*</span>
               </label>
-              {savedUnits.length > 0 && (
-                <span className="text-[10px] text-slate-500 font-semibold">
-                  {savedUnits.length} Unit Tersimpan di Dropdown
-                </span>
-              )}
+              <span className="text-[10px] text-slate-500 font-semibold">
+                Pilih unit kerja atau ketik manual
+              </span>
             </div>
 
             {/* Dropdown Unit Kerja */}
@@ -256,11 +297,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                 }}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="">
-                  {savedUnits.length === 0
-                    ? '-- Belum ada unit tersimpan di dropdown (Ketik di bawah) --'
-                    : '-- Pilih dari Unit Kerja Tersimpan --'}
-                </option>
+                <option value="">-- Pilih Unit Kerja RSUD Al-Mulk --</option>
                 {savedUnits.map((u) => (
                   <option key={u} value={u}>
                     {u}
