@@ -5,6 +5,18 @@ import {
   defaultLpjReportParams,
   buildParamsForPeriod,
   generateLpjWordHtml,
+  getLpjPdfFileName,
+  paginateAppendixTable,
+  LPJ_F4_PORTRAIT_MM,
+  LPJ_F4_LANDSCAPE_MM,
+  LPJ_F4_PORTRAIT_PX,
+  LPJ_F4_LANDSCAPE_PX,
+  LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
+  LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+  LPJ_SHU_LANDSCAPE_FIRST_PAGE_ROWS,
+  LPJ_SHU_LANDSCAPE_NEXT_PAGE_ROWS,
+  LPJ_PORTRAIT_FIRST_PAGE_ROWS,
+  LPJ_PORTRAIT_NEXT_PAGE_ROWS,
 } from './lpjReportGenerator';
 import { Member, LoanRecord, Transaction, Product, StockMutation } from '../types';
 import { initialCoopConfig } from '../data/initialData';
@@ -226,5 +238,57 @@ describe('calculateLpjRealtimeData (LPJ RAT Koperasi Amanah Baraya)', () => {
       );
     }
   });
+
+  it('provides exact F4 paper dimensions (215mm x 330mm portrait, 330mm x 215mm landscape) and PDF filename', () => {
+    assert.deepEqual(LPJ_F4_PORTRAIT_MM, { width: 215, height: 330 });
+    assert.deepEqual(LPJ_F4_LANDSCAPE_MM, { width: 330, height: 215 });
+    assert.deepEqual(LPJ_F4_PORTRAIT_PX, { width: 813, height: 1247 });
+    assert.deepEqual(LPJ_F4_LANDSCAPE_PX, { width: 1247, height: 813 });
+    assert.equal(
+      getLpjPdfFileName(defaultLpjReportParams),
+      'RAT_KOPERASI_AMBAR_LPJ_2026_TahunBuku_2025_F4.pdf'
+    );
+  });
+
+  it('paginates appendix tables to fill F4 sheets near the bottom margin before moving to the next page', () => {
+    const dummyRows = Array.from({ length: 89 }, (_, i) => i + 1);
+
+    const debtSheets = paginateAppendixTable(
+      dummyRows,
+      20,
+      LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
+      LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+      2
+    );
+    assert.equal(debtSheets.length, 3);
+    assert.equal(debtSheets[0].rows.length, 36);
+    assert.equal(debtSheets[1].rows.length, 42);
+    assert.equal(debtSheets[2].rows.length, 11);
+
+    const shuSheets = paginateAppendixTable(
+      dummyRows,
+      23,
+      LPJ_SHU_LANDSCAPE_FIRST_PAGE_ROWS,
+      LPJ_SHU_LANDSCAPE_NEXT_PAGE_ROWS,
+      1
+    );
+    assert.equal(shuSheets.length, 3);
+    assert.equal(shuSheets[0].rows.length, 34);
+    assert.equal(shuSheets[1].rows.length, 39);
+    assert.equal(shuSheets[2].rows.length, 16);
+
+    const receiptSheets = paginateAppendixTable(
+      dummyRows,
+      26,
+      LPJ_PORTRAIT_FIRST_PAGE_ROWS,
+      LPJ_PORTRAIT_NEXT_PAGE_ROWS,
+      1
+    );
+    assert.equal(receiptSheets.length, 2);
+    assert.equal(receiptSheets[0].rows.length, 43);
+    assert.equal(receiptSheets[1].rows.length, 46);
+  });
 });
+
+
 

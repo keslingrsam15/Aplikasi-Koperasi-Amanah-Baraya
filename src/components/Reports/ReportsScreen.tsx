@@ -17,17 +17,19 @@ import {
   calculateLpjRealtimeData,
   formatNumberPlain,
   formatDecimalTwoIndo,
-  downloadLpjWordDocument,
+  downloadLpjPdfDocument,
+  getLpjPdfFileName,
   renderDynamicCoverDataUrl,
   paginateAppendixTable,
   LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
   LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+  LPJ_SHU_LANDSCAPE_FIRST_PAGE_ROWS,
+  LPJ_SHU_LANDSCAPE_NEXT_PAGE_ROWS,
   LPJ_PORTRAIT_FIRST_PAGE_ROWS,
   LPJ_PORTRAIT_NEXT_PAGE_ROWS,
 } from '../../utils/lpjReportGenerator';
 import { saveConfigToSupabase } from '../../services/supabase';
 import {
-  Printer,
   CheckCircle2,
   ChevronDown,
   FileDown,
@@ -102,6 +104,10 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   const [openDropdown, setOpenDropdown] = useState<'RAT' | 'TAHUN_BUKU' | null>(null);
   const [downloadNotice, setDownloadNotice] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [downloadProgress, setDownloadProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
   const [coverImageSrc, setCoverImageSrc] = useState<string>('/assets/lpj_cover_page1.jpg');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [isSavingReport, setIsSavingReport] = useState<boolean>(false);
@@ -260,8 +266,8 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
       paginateAppendixTable(
         filteredMemberRows,
         20 + debtAppendixPages.length,
-        LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
-        LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+        LPJ_SHU_LANDSCAPE_FIRST_PAGE_ROWS,
+        LPJ_SHU_LANDSCAPE_NEXT_PAGE_ROWS,
         1
       ),
     [filteredMemberRows, debtAppendixPages.length]
@@ -318,7 +324,9 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
       const contentEl = sheet.firstElementChild as HTMLElement | null;
       if (!contentEl) return;
 
-      const pageKey = `page-${idx + 2}`;
+      const tbodyRowsCount = sheet.querySelectorAll('tbody tr').length;
+      const pageKey =
+        idx >= 18 ? `page-${idx + 2}-rows-${tbodyRowsCount}` : `page-${idx + 2}`;
       contentEl.setAttribute('data-lpj-editable', pageKey);
       contentEl.setAttribute('contenteditable', 'true');
       contentEl.setAttribute('spellcheck', 'false');
@@ -400,19 +408,24 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
     }
   };
 
-  const handleDownloadWord = async () => {
+  const handleDownloadPdf = async () => {
+    if (!reportContainerRef.current) return;
     setIsDownloading(true);
+    setDownloadProgress({ current: 1, total: totalPagesCount });
     try {
-      await downloadLpjWordDocument(lpjData, lpjParams, coopConfig);
+      await downloadLpjPdfDocument(
+        reportContainerRef.current,
+        lpjParams,
+        (currentPage, totalPages) => {
+          setDownloadProgress({ current: currentPage, total: totalPages });
+        }
+      );
       setDownloadNotice(true);
-      setTimeout(() => setDownloadNotice(false), 4500);
+      setTimeout(() => setDownloadNotice(false), 5000);
     } finally {
       setIsDownloading(false);
+      setDownloadProgress(null);
     }
-  };
-
-  const handlePrintDocument = () => {
-    window.print();
   };
 
   const f = (n: number) => (n === 0 ? '0' : formatNumberPlain(n));
@@ -705,29 +718,23 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             </div>
           </div>
 
-          {/* Right: Cetak F4 / PDF & Download Word F4 (.doc) (Icon-Only Buttons) */}
+          {/* Right: Tombol Unduh PDF (F4 Identik 100% dengan Laporan Resmi di Aplikasi) */}
           <div className="flex items-center gap-2 shrink-0">
             <button
-              id="btn-print-lpj-pdf"
-              type="button"
-              onClick={handlePrintDocument}
-              title="Cetak F4 / PDF"
-              aria-label="Cetak F4 / PDF"
-              className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl flex items-center justify-center transition cursor-pointer"
-            >
-              <Printer className="w-4 h-4 text-slate-700 shrink-0" />
-            </button>
-
-            <button
-              id="btn-download-lpj-word"
+              id="btn-download-lpj-pdf"
               type="button"
               disabled={isDownloading}
-              onClick={handleDownloadWord}
-              title="Download Laporan Word F4 (.doc)"
-              aria-label="Download Laporan Word F4 (.doc)"
-              className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl flex items-center justify-center shadow-sm transition active:scale-95 cursor-pointer"
+              onClick={handleDownloadPdf}
+              title="Unduh PDF Ukuran Kertas F4 (21,5 cm x 33,0 cm)"
+              aria-label="Unduh PDF"
+              className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-65 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition active:scale-95 cursor-pointer whitespace-nowrap"
             >
               <FileDown className="w-4 h-4 shrink-0" />
+              <span>
+                {isDownloading && downloadProgress
+                  ? `Mengunduh PDF (${downloadProgress.current}/${downloadProgress.total})...`
+                  : 'Unduh PDF'}
+              </span>
             </button>
           </div>
         </div>
@@ -736,11 +743,9 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
           <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2 font-semibold">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              Dokumen Word resmi ukuran <strong>F4 (Margin 2,5 cm)</strong>{' '}
-              <strong>
-                RAT_KOPERASI_AMBAR_LPJ_{lpjParams.tahunRat}_TahunBuku_{lpjParams.tahunBuku}_F4.doc
-              </strong>{' '}
-              berhasil diunduh lengkap dengan Desain Cover &amp; Halaman 1–{totalPagesCount}.
+              Dokumen PDF resmi ukuran kertas <strong>F4 (21,5 cm × 33,0 cm)</strong>{' '}
+              <strong>{getLpjPdfFileName(lpjParams)}</strong> berhasil diunduh (100% sama persis
+              dengan laporan resmi di aplikasi, Halaman 1–{totalPagesCount}).
             </span>
           </div>
         )}
@@ -2415,7 +2420,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
           debtAppendixPages.map((sheet) => (
             <div
               key={`lpj-page-${sheet.pageNo}`}
-              className="f4-sheet-landscape bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[33cm] px-3 py-5 sm:px-5 sm:py-6 xl:px-8 xl:py-6 text-slate-900 font-sans leading-[1.2] flex flex-col justify-between"
+              className="f4-sheet-landscape bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[33cm] min-h-[21.5cm] px-3 py-5 sm:px-8 sm:py-6 text-slate-900 font-sans leading-[1.2] flex flex-col justify-between"
             >
               <div className="space-y-2.5 w-full">
                 {sheet.showTitleAndHeader && (
@@ -2431,7 +2436,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
                 )}
 
                 <div className="w-full">
-                  <table className="w-full table-fixed border-collapse border border-slate-900 text-[4.8pt] sm:text-[5.2pt] lg:text-[5.5pt] xl:text-[6.4pt] leading-[1.18]">
+                  <table className="w-full table-fixed border-collapse border border-slate-900 text-[5.2pt] sm:text-[6.4pt] leading-[1.18]">
                     <colgroup>
                       <col style={{ width: '2.4%' }} />
                       <col style={{ width: '13.2%' }} />
@@ -2662,7 +2667,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             {shuAppendixPages.map((sheet) => (
               <div
                 key={`lpj-page-${sheet.pageNo}`}
-                className="f4-sheet-landscape bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[33cm] px-3 py-5 sm:px-5 sm:py-6 xl:px-8 xl:py-6 text-slate-900 font-sans leading-[1.2] flex flex-col justify-between"
+                className="f4-sheet-landscape bg-white shadow-md border border-slate-300 mx-auto w-full max-w-[33cm] min-h-[21.5cm] px-3 py-5 sm:px-8 sm:py-6 text-slate-900 font-sans leading-[1.2] flex flex-col justify-between"
               >
                 <div className="space-y-2.5 w-full">
                   {sheet.showTitleAndHeader && (
@@ -2678,7 +2683,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
                   )}
 
                   <div className="w-full">
-                    <table className="w-full table-fixed border-collapse border border-slate-900 text-[5.4pt] sm:text-[6pt] lg:text-[6.5pt] xl:text-[7.2pt] leading-[1.18]">
+                    <table className="w-full table-fixed border-collapse border border-slate-900 text-[6pt] sm:text-[7.2pt] leading-[1.18]">
                       <colgroup>
                         <col style={{ width: '2.8%' }} />
                         <col style={{ width: '16.8%' }} />
@@ -2911,22 +2916,22 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
                       <tbody className="tabular-nums">
                         {sheet.rows.map((row) => (
                           <tr key={`ttd-${row.memberId}`} className="hover:bg-slate-50">
-                            <td className="border border-slate-900 py-[3.8px] px-1 text-center">
+                            <td className="border border-slate-900 py-[3.2px] px-1 text-center">
                               {row.no}
                             </td>
-                            <td className="border border-slate-900 py-[3.8px] px-2 truncate">
+                            <td className="border border-slate-900 py-[3.2px] px-2 truncate">
                               {row.name}
                             </td>
-                            <td className="border border-slate-900 py-[3.8px] px-1.5">
+                            <td className="border border-slate-900 py-[3.2px] px-1.5">
                               <RpCell value={row.sukarela} compact />
                             </td>
-                            <td className="border border-slate-900 py-[3.8px] px-1.5 text-right whitespace-nowrap">
+                            <td className="border border-slate-900 py-[3.2px] px-1.5 text-right whitespace-nowrap">
                               {formatDecimalTwoIndo(row.shuSimpananExact)}
                             </td>
-                            <td className="border border-slate-900 py-[3.8px] px-1.5">
+                            <td className="border border-slate-900 py-[3.2px] px-1.5">
                               <RpCell value={row.shuJasa} compact />
                             </td>
-                            <td className="border border-slate-900 py-[3.8px] px-1.5">
+                            <td className="border border-slate-900 py-[3.2px] px-1.5">
                               <RpCell value={row.jumlahTandaTerimaRat} bold compact />
                             </td>
                           </tr>

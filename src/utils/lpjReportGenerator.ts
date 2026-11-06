@@ -1,3 +1,6 @@
+import { jsPDF } from 'jspdf';
+import * as htmlToImage from 'html-to-image';
+import html2canvas from 'html2canvas-pro';
 import {
   Member,
   SavingsRecord,
@@ -8,6 +11,15 @@ import {
   CoopConfig,
   UserProfile,
 } from '../types';
+
+export const LPJ_F4_PORTRAIT_MM = { width: 215, height: 330 } as const;
+export const LPJ_F4_LANDSCAPE_MM = { width: 330, height: 215 } as const;
+export const LPJ_F4_PORTRAIT_PX = { width: 813, height: 1247 } as const;
+export const LPJ_F4_LANDSCAPE_PX = { width: 1247, height: 813 } as const;
+
+export function getLpjPdfFileName(params: Pick<LpjReportParams, 'tahunRat' | 'tahunBuku'>): string {
+  return `RAT_KOPERASI_AMBAR_LPJ_${params.tahunRat}_TahunBuku_${params.tahunBuku}_F4.pdf`;
+}
 
 export type LpjPeriodeBulanFormat = 'APRIL_DESEMBER' | 'JANUARI_DESEMBER' | 'APRIL_MARET';
 
@@ -906,10 +918,12 @@ export interface LpjAppendixSheet<T> {
   isLastPage: boolean;
 }
 
-export const LPJ_LANDSCAPE_FIRST_PAGE_ROWS = 24;
-export const LPJ_LANDSCAPE_NEXT_PAGE_ROWS = 26;
-export const LPJ_PORTRAIT_FIRST_PAGE_ROWS = 24;
-export const LPJ_PORTRAIT_NEXT_PAGE_ROWS = 25;
+export const LPJ_LANDSCAPE_FIRST_PAGE_ROWS = 36;
+export const LPJ_LANDSCAPE_NEXT_PAGE_ROWS = 42;
+export const LPJ_SHU_LANDSCAPE_FIRST_PAGE_ROWS = 34;
+export const LPJ_SHU_LANDSCAPE_NEXT_PAGE_ROWS = 39;
+export const LPJ_PORTRAIT_FIRST_PAGE_ROWS = 43;
+export const LPJ_PORTRAIT_NEXT_PAGE_ROWS = 46;
 
 /**
  * Memecah baris data tabel lampiran LPJ ke halaman-halaman F4 dengan kapasitas maksimal
@@ -2240,8 +2254,8 @@ export function generateLpjWordHtml(
     const shuPages = paginateAppendixTable(
       data.memberRows,
       shuStartPage,
-      LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
-      LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+      LPJ_SHU_LANDSCAPE_FIRST_PAGE_ROWS,
+      LPJ_SHU_LANDSCAPE_NEXT_PAGE_ROWS,
       1
     );
 
@@ -2397,8 +2411,8 @@ export function generateLpjWordHtml(
     const shuPagesCount = paginateAppendixTable(
       data.memberRows,
       20 + debtPagesCount,
-      LPJ_LANDSCAPE_FIRST_PAGE_ROWS,
-      LPJ_LANDSCAPE_NEXT_PAGE_ROWS,
+      LPJ_SHU_LANDSCAPE_FIRST_PAGE_ROWS,
+      LPJ_SHU_LANDSCAPE_NEXT_PAGE_ROWS,
       1
     ).length;
     const receiptStartPage = 20 + debtPagesCount + shuPagesCount;
@@ -2598,4 +2612,348 @@ export async function downloadLpjWordDocument(
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+let cachedLpjFontEmbedCss: string | null = null;
+
+async function getFastLpjFontEmbedCSS(sampleElement: HTMLElement): Promise<string> {
+  if (cachedLpjFontEmbedCss !== null) {
+    return cachedLpjFontEmbedCss;
+  }
+  try {
+    const rawCss = await htmlToImage.getFontEmbedCSS(sampleElement);
+    const blocks = rawCss.split('@font-face');
+    const keptBlocks: string[] = [];
+    for (let i = 1; i < blocks.length; i++) {
+      const block = '@font-face' + blocks[i];
+      const isNormalStyle = /font-style:\s*normal/i.test(block);
+      const isLatinRange = /U\+0000-00FF/i.test(block);
+      const isNeededWeight = /font-weight:\s*(400|600|700|800)/i.test(block);
+      if (isNormalStyle && isLatinRange && isNeededWeight) {
+        keptBlocks.push(block);
+      }
+    }
+    cachedLpjFontEmbedCss = keptBlocks.length > 0 ? keptBlocks.join('\n') : rawCss;
+  } catch {
+    cachedLpjFontEmbedCss = '';
+  }
+  return cachedLpjFontEmbedCss;
+}
+
+function collectAllAppStylesheetCss(): string {
+  const cssChunks: string[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      const href = sheet.href || '';
+      if (href.includes('fonts.googleapis.com')) continue;
+      const rules = sheet.cssRules;
+      if (!rules) continue;
+      for (let i = 0; i < rules.length; i++) {
+        cssChunks.push(rules[i].cssText);
+      }
+    } catch {
+      // Ignore cross-origin stylesheets
+    }
+  }
+  return cssChunks.join('\n');
+}
+
+async function ensureImagesAreDataUrls(root: HTMLElement): Promise<void> {
+  const imgs = Array.from(root.querySelectorAll('img'));
+  for (const img of imgs) {
+    const src = img.getAttribute('src') || '';
+    if (!src || src.startsWith('data:')) continue;
+    try {
+      await new Promise<void>((resolve) => {
+        const loader = new Image();
+        loader.crossOrigin = 'anonymous';
+        loader.onload = () => {
+          try {
+            const c = document.createElement('canvas');
+            c.width = loader.naturalWidth || 813;
+            c.height = loader.naturalHeight || 1247;
+            const ctx = c.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(loader, 0, 0, c.width, c.height);
+              img.setAttribute('src', c.toDataURL('image/jpeg', 0.94));
+            }
+          } catch {
+            // keep original src
+          }
+          resolve();
+        };
+        loader.onerror = () => resolve();
+        loader.src = src;
+      });
+    } catch {
+      // ignore
+    }
+  }
+}
+
+async function renderCloneViaSvgForeignObject(
+  clone: HTMLElement,
+  targetW: number,
+  targetH: number,
+  pixelRatio: number,
+  combinedCss: string
+): Promise<HTMLCanvasElement> {
+  await ensureImagesAreDataUrls(clone);
+  const serializedHtml = new XMLSerializer().serializeToString(clone);
+  const safeCdataCss = combinedCss.replace(/\]\]>/g, ']]]]><![CDATA[>');
+  const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" width="${targetW}" height="${targetH}" viewBox="0 0 ${targetW} ${targetH}">
+    <foreignObject x="0" y="0" width="100%" height="100%">
+      <div xmlns="http://www.w3.org/1999/xhtml" style="width:${targetW}px;height:${targetH}px;margin:0;padding:0;background:#ffffff;overflow:hidden;">
+        <style><![CDATA[${safeCdataCss}]]></style>
+        ${serializedHtml}
+      </div>
+    </foreignObject>
+  </svg>`;
+
+  const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgMarkup)}`;
+
+  return new Promise<HTMLCanvasElement>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(targetW * pixelRatio);
+        canvas.height = Math.round(targetH * pixelRatio);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas 2D context unavailable'));
+          return;
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = (err) => reject(err);
+    img.src = svgDataUrl;
+  });
+}
+
+export interface LpjPdfDownloadResult {
+  fileName: string;
+  pageCount: number;
+  pagesMeta: Array<{
+    pageNo: number;
+    orientation: 'portrait' | 'landscape';
+    widthMm: number;
+    heightMm: number;
+  }>;
+}
+
+/**
+ * Mengunduh Laporan Pertanggung Jawaban (LPJ) RAT sebagai file PDF Ukuran Kertas F4
+ * (215mm x 330mm untuk Portrait dan 330mm x 215mm untuk Landscape) yang 100% identik
+ * dengan tampilan lembar laporan resmi di aplikasi.
+ */
+export async function downloadLpjPdfDocument(
+  reportContainer: HTMLElement,
+  params: LpjReportParams,
+  onProgress?: (currentPage: number, totalPages: number) => void
+): Promise<LpjPdfDownloadResult> {
+  if (typeof document !== 'undefined' && 'fonts' in document) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // ignore font readiness error
+    }
+  }
+
+  const sheetElements = Array.from(
+    reportContainer.querySelectorAll<HTMLElement>(
+      '.f4-cover-sheet, .f4-sheet-portrait, .f4-sheet-landscape'
+    )
+  );
+
+  if (sheetElements.length === 0) {
+    throw new Error('Tidak ditemukan lembar halaman laporan F4 untuk diunduh.');
+  }
+
+  const stagingHost = document.createElement('div');
+  stagingHost.setAttribute('aria-hidden', 'true');
+  stagingHost.style.position = 'fixed';
+  stagingHost.style.left = '-10000px';
+  stagingHost.style.top = '0';
+  stagingHost.style.zIndex = '-9999';
+  stagingHost.style.background = '#ffffff';
+  stagingHost.style.pointerEvents = 'none';
+  document.body.appendChild(stagingHost);
+
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [LPJ_F4_PORTRAIT_MM.width, LPJ_F4_PORTRAIT_MM.height],
+    compress: true,
+  });
+
+  const pagesMeta: LpjPdfDownloadResult['pagesMeta'] = [];
+  const samplePagesPreview: Array<{
+    pageNo: number;
+    orientation: 'portrait' | 'landscape';
+    widthMm: number;
+    heightMm: number;
+    dataUrl: string;
+  }> = [];
+
+  try {
+    const fontEmbedCSS = await getFastLpjFontEmbedCSS(sheetElements[0]);
+    const appStylesheetCss = collectAllAppStylesheetCss();
+    const combinedCss = `${fontEmbedCSS}\n${appStylesheetCss}`;
+
+    for (let i = 0; i < sheetElements.length; i++) {
+      const sheet = sheetElements[i];
+      const isLandscape = sheet.classList.contains('f4-sheet-landscape');
+      const isCover = sheet.classList.contains('f4-cover-sheet');
+
+      const targetPx = isLandscape ? LPJ_F4_LANDSCAPE_PX : LPJ_F4_PORTRAIT_PX;
+      const targetMm = isLandscape ? LPJ_F4_LANDSCAPE_MM : LPJ_F4_PORTRAIT_MM;
+      const orientation: 'portrait' | 'landscape' = isLandscape ? 'landscape' : 'portrait';
+
+      if (onProgress) {
+        onProgress(i + 1, sheetElements.length);
+      }
+
+      // Yield to browser UI thread so progress state renders smoothly
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      stagingHost.innerHTML = '';
+      stagingHost.style.width = `${targetPx.width}px`;
+      stagingHost.style.height = `${targetPx.height}px`;
+
+      const clone = sheet.cloneNode(true) as HTMLElement;
+      clone.style.margin = '0';
+      clone.style.width = `${targetPx.width}px`;
+      clone.style.maxWidth = `${targetPx.width}px`;
+      clone.style.minWidth = `${targetPx.width}px`;
+      clone.style.height = `${targetPx.height}px`;
+      clone.style.minHeight = `${targetPx.height}px`;
+      clone.style.maxHeight = `${targetPx.height}px`;
+      clone.style.boxSizing = 'border-box';
+      clone.style.boxShadow = 'none';
+      clone.style.border = 'none';
+      clone.style.borderRadius = '0';
+      clone.style.background = '#ffffff';
+      clone.style.overflow = 'hidden';
+      clone.style.transform = 'none';
+
+      if (!isCover && !isLandscape && !sheet.style.padding) {
+        const computedStyle = window.getComputedStyle(sheet);
+        clone.style.paddingTop = computedStyle.paddingTop;
+        clone.style.paddingBottom = computedStyle.paddingBottom;
+        clone.style.paddingLeft = computedStyle.paddingLeft;
+        clone.style.paddingRight = computedStyle.paddingRight;
+      }
+
+      // Remove contentEditable focus/hover visual rings in exported PDF
+      const editableChildren = clone.querySelectorAll<HTMLElement>('[contenteditable]');
+      editableChildren.forEach((el) => {
+        el.removeAttribute('contenteditable');
+        el.style.outline = 'none';
+        el.style.boxShadow = 'none';
+      });
+
+      stagingHost.appendChild(clone);
+
+      const pixelRatio = 2;
+      let canvas: HTMLCanvasElement;
+      try {
+        canvas = await renderCloneViaSvgForeignObject(
+          clone,
+          targetPx.width,
+          targetPx.height,
+          pixelRatio,
+          combinedCss
+        );
+      } catch {
+        try {
+          canvas = await htmlToImage.toCanvas(clone, {
+            width: targetPx.width,
+            height: targetPx.height,
+            canvasWidth: targetPx.width * pixelRatio,
+            canvasHeight: targetPx.height * pixelRatio,
+            pixelRatio,
+            backgroundColor: '#ffffff',
+            cacheBust: false,
+            fontEmbedCSS,
+          });
+        } catch {
+          canvas = await html2canvas(clone, {
+            scale: pixelRatio,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            width: targetPx.width,
+            height: targetPx.height,
+            windowWidth: 1440,
+            windowHeight: targetPx.height,
+            logging: false,
+          });
+        }
+      }
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.94);
+
+      if (i > 0) {
+        pdf.addPage([targetMm.width, targetMm.height], orientation);
+      }
+
+      pdf.addImage(
+        imgData,
+        'JPEG',
+        0,
+        0,
+        targetMm.width,
+        targetMm.height,
+        `lpj_f4_page_${i + 1}`,
+        'FAST'
+      );
+
+      pagesMeta.push({
+        pageNo: i + 1,
+        orientation,
+        widthMm: targetMm.width,
+        heightMm: targetMm.height,
+      });
+
+      if (i === 0 || i >= 19) {
+        samplePagesPreview.push({
+          pageNo: i + 1,
+          orientation,
+          widthMm: targetMm.width,
+          heightMm: targetMm.height,
+          dataUrl: imgData,
+        });
+      }
+    }
+
+    const fileName = getLpjPdfFileName(params);
+    pdf.save(fileName);
+
+    const result: LpjPdfDownloadResult = {
+      fileName,
+      pageCount: sheetElements.length,
+      pagesMeta,
+    };
+
+    if (typeof window !== 'undefined') {
+      (window as unknown as Record<string, unknown>).__LAST_LPJ_PDF_META__ = {
+        ...result,
+        samplePagesPreview,
+      };
+    }
+
+    return result;
+  } finally {
+    if (stagingHost.parentNode) {
+      stagingHost.parentNode.removeChild(stagingHost);
+    }
+  }
 }
