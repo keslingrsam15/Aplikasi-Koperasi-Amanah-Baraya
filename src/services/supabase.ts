@@ -780,6 +780,8 @@ export const deleteUserFromSupabase = async (userId: string): Promise<boolean> =
    MEMBER (ANGGOTA KOPERASI) CRUD
    ========================================================================== */
 
+let coopMembersExtendedColumnsSupported: boolean | null = null;
+
 export const fetchMembersFromSupabase = async (): Promise<Member[] | null> => {
   const client = getSupabaseClient();
   if (!client) return null;
@@ -796,6 +798,10 @@ export const fetchMembersFromSupabase = async (): Promise<Member[] | null> => {
     }
     if (!data) return [];
 
+    if (data.length > 0) {
+      coopMembersExtendedColumnsSupported = 'simpanan_wisata' in data[0];
+    }
+
     return data.map((row: any) => ({
       id: row.id,
       memberNumber: row.member_number,
@@ -809,6 +815,15 @@ export const fetchMembersFromSupabase = async (): Promise<Member[] | null> => {
       simpananPokok: Number(row.simpanan_pokok || 0),
       simpananWajib: Number(row.simpanan_wajib || 0),
       simpananSukarela: Number(row.simpanan_sukarela || 0),
+      simpananWisata:
+        row.simpanan_wisata !== undefined && row.simpanan_wisata !== null
+          ? Number(row.simpanan_wisata)
+          : undefined,
+      kekuranganKaryawisata:
+        row.kekurangan_karyawisata !== undefined && row.kekurangan_karyawisata !== null
+          ? Number(row.kekurangan_karyawisata)
+          : undefined,
+      gender: row.gender || undefined,
       address: row.address || undefined,
       notes: row.notes || undefined,
       updatedAt: row.updated_at,
@@ -824,7 +839,7 @@ export const saveMemberToSupabase = async (member: Member): Promise<boolean> => 
   if (!client) return false;
 
   try {
-    const payload = {
+    const basePayload = {
       id: member.id,
       member_number: member.memberNumber,
       name: member.name,
@@ -842,11 +857,45 @@ export const saveMemberToSupabase = async (member: Member): Promise<boolean> => 
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await client.from('coop_members').upsert(payload);
+    if (coopMembersExtendedColumnsSupported === false) {
+      const { error: baseError } = await client.from('coop_members').upsert(basePayload);
+      if (baseError) {
+        handleSupabaseError('saveMember', 'coop_members', baseError);
+        return false;
+      }
+      return true;
+    }
+
+    const fullPayload = {
+      ...basePayload,
+      gender: member.gender || null,
+      simpanan_wisata: member.simpananWisata ?? 0,
+      kekurangan_karyawisata: member.kekuranganKaryawisata ?? 0,
+    };
+
+    const { error } = await client.from('coop_members').upsert(fullPayload);
     if (error) {
+      const errCode = (error as { code?: string }).code;
+      const errMsg = (error as { message?: string }).message || '';
+      const isMissingColumnError =
+        errCode === 'PGRST204' ||
+        errCode === '42703' ||
+        /column/i.test(errMsg);
+
+      if (isMissingColumnError) {
+        coopMembersExtendedColumnsSupported = false;
+        const { error: fallbackError } = await client.from('coop_members').upsert(basePayload);
+        if (!fallbackError) {
+          return true;
+        }
+        handleSupabaseError('saveMember', 'coop_members', fallbackError);
+        return false;
+      }
+
       handleSupabaseError('saveMember', 'coop_members', error);
       return false;
     }
+    coopMembersExtendedColumnsSupported = true;
     return true;
   } catch (err) {
     handleSupabaseError('saveMember', 'coop_members', err);
@@ -1245,10 +1294,17 @@ CREATE TABLE IF NOT EXISTS public.coop_members (
   simpanan_pokok NUMERIC(15,2) DEFAULT 0,
   simpanan_wajib NUMERIC(15,2) DEFAULT 0,
   simpanan_sukarela NUMERIC(15,2) DEFAULT 0,
+  simpanan_wisata NUMERIC(15,2) DEFAULT 0,
+  kekurangan_karyawisata NUMERIC(15,2) DEFAULT 0,
+  gender TEXT,
   address TEXT,
   notes TEXT,
   updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+ALTER TABLE IF EXISTS public.coop_members ADD COLUMN IF NOT EXISTS simpanan_wisata NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE IF EXISTS public.coop_members ADD COLUMN IF NOT EXISTS kekurangan_karyawisata NUMERIC(15,2) DEFAULT 0;
+ALTER TABLE IF EXISTS public.coop_members ADD COLUMN IF NOT EXISTS gender TEXT;
 
 -- 7. TABEL TRANSAKSI SIMPANAN (MUTASI SIMPANAN)
 CREATE TABLE IF NOT EXISTS public.coop_savings (

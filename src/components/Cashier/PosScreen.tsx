@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Product, CartItem, Transaction, CustomerType, PaymentMethod, HeldCart, CoopConfig, UserProfile, Member } from '../../types';
 import { formatRupiah, playScanSound, playSuccessSound, playErrorSound, generateInvoiceNumber } from '../../utils/formatters';
+import { getMemberTotalSavings } from '../../utils/savingsCalculator';
 import { CameraScannerModal } from '../Scanner/CameraScannerModal';
 import { ReceiptModal } from './ReceiptModal';
 import confetti from 'canvas-confetti';
@@ -670,7 +671,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                   <datalist id="members-datalist">
                     {members.map((m) => (
                       <option key={m.id} value={`${m.memberNumber} - ${m.name}`}>
-                        {m.unitKerja} | Simpanan: {formatRupiah(m.simpananPokok + m.simpananWajib + m.simpananSukarela)}
+                        {m.unitKerja} | Simpanan: {formatRupiah(getMemberTotalSavings(m))}
                       </option>
                     ))}
                   </datalist>

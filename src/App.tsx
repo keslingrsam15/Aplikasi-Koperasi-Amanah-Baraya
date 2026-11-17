@@ -308,7 +308,24 @@ export function App() {
 
         if (cloudMembers !== null) {
           if (cloudMembers.length > 0) {
-            setMembers(cloudMembers);
+            setMembers((prevLocal: Member[]) => {
+              const localById = new Map<string, Member>(prevLocal.map((m) => [m.id, m]));
+              return cloudMembers.map((cloudMem) => {
+                const localMem = localById.get(cloudMem.id);
+                return {
+                  ...cloudMem,
+                  simpananWisata:
+                    cloudMem.simpananWisata !== undefined
+                      ? cloudMem.simpananWisata
+                      : (localMem?.simpananWisata ?? 0),
+                  kekuranganKaryawisata:
+                    cloudMem.kekuranganKaryawisata !== undefined
+                      ? cloudMem.kekuranganKaryawisata
+                      : localMem?.kekuranganKaryawisata,
+                  gender: cloudMem.gender ?? localMem?.gender,
+                };
+              });
+            });
           } else if (members.length > 0) {
             members.forEach((mem) => saveMemberToSupabase(mem));
           }

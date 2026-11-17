@@ -4,6 +4,11 @@ import { MemberFormModal } from './MemberFormModal';
 import { MemberDetailModal } from './MemberDetailModal';
 import { formatRupiah, formatDateIndo, exportToCSV } from '../../utils/formatters';
 import {
+  getAllMembersSavingsSummary,
+  getMemberSavingsBreakdown,
+  getMemberTotalSavings,
+} from '../../utils/savingsCalculator';
+import {
   Users,
   UserPlus,
   Search,
@@ -108,11 +113,19 @@ export const MemberList: React.FC<MemberListProps> = ({
   // Metrics
   const totalMembers = members.length;
   const activeMembers = members.filter((m) => m.status === 'active').length;
-  const totalAllSavings = members.reduce(
-    (sum, m) => sum + (m.simpananPokok + m.simpananWajib + m.simpananSukarela),
-    0
+  const { totalAllSavings, avgSavings } = useMemo(
+    () => getAllMembersSavingsSummary(members),
+    [members]
   );
-  const avgSavings = totalMembers > 0 ? totalAllSavings / totalMembers : 0;
+
+  // Resolve latest member snapshot for detail modal so edits update in real time
+  const activeMemberDetail = useMemo(
+    () =>
+      selectedMemberDetail
+        ? members.find((m) => m.id === selectedMemberDetail.id) || selectedMemberDetail
+        : null,
+    [members, selectedMemberDetail]
+  );
 
   // Filtered & Sorted Members
   const filteredMembers = useMemo(() => {
@@ -138,8 +151,8 @@ export const MemberList: React.FC<MemberListProps> = ({
         } else if (sortBy === 'joinDate') {
           comp = new Date(a.joinDate).getTime() - new Date(b.joinDate).getTime();
         } else if (sortBy === 'savings') {
-          const totA = a.simpananPokok + a.simpananWajib + a.simpananSukarela;
-          const totB = b.simpananPokok + b.simpananWajib + b.simpananSukarela;
+          const totA = getMemberTotalSavings(a);
+          const totB = getMemberTotalSavings(b);
           comp = totA - totB;
         }
         return sortOrder === 'asc' ? comp : -comp;
@@ -159,12 +172,13 @@ export const MemberList: React.FC<MemberListProps> = ({
       'Simpanan Pokok (Rp)',
       'Simpanan Wajib (Rp)',
       'Simpanan Sukarela (Rp)',
+      'Simpanan Karyawisata (Rp)',
       'Total Simpanan (Rp)',
       'Catatan',
     ];
 
     const rows = filteredMembers.map((m, index) => {
-      const total = m.simpananPokok + m.simpananWajib + m.simpananSukarela;
+      const breakdown = getMemberSavingsBreakdown(m);
       return [
         index + 1,
         m.memberNumber,
@@ -174,10 +188,11 @@ export const MemberList: React.FC<MemberListProps> = ({
         m.phone || '-',
         formatDateIndo(m.joinDate),
         m.status === 'active' ? 'Aktif' : 'Non-Aktif',
-        m.simpananPokok,
-        m.simpananWajib,
-        m.simpananSukarela,
-        total,
+        breakdown.pokok,
+        breakdown.wajib,
+        breakdown.sukarela,
+        breakdown.wisata,
+        breakdown.total,
         m.notes || '-',
       ];
     });
@@ -253,7 +268,7 @@ export const MemberList: React.FC<MemberListProps> = ({
             {formatRupiah(totalAllSavings)}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            Simpanan Pokok + Wajib + Sukarela
+            Pokok + Wajib + Sukarela + Karyawisata
           </div>
         </div>
 
@@ -398,8 +413,8 @@ export const MemberList: React.FC<MemberListProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredMembers.map((member, index) => {
-                  const totalSimpanan =
-                    member.simpananPokok + member.simpananWajib + member.simpananSukarela;
+                  const savings = getMemberSavingsBreakdown(member);
+                  const totalSimpanan = savings.total;
 
                   return (
                     <tr key={member.id} className="hover:bg-slate-50/70 transition group">
@@ -452,11 +467,25 @@ export const MemberList: React.FC<MemberListProps> = ({
 
                       {/* Saldo Simpanan */}
                       <td className="p-4 text-right">
-                        <div className="font-black text-slate-900 text-sm">
+                        <div className="font-black text-slate-900 text-sm tabular-nums">
                           {formatRupiah(totalSimpanan)}
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
-                          P: {formatRupiah(member.simpananPokok)} &bull; W: {formatRupiah(member.simpananWajib)} &bull; S: {formatRupiah(member.simpananSukarela)}
+                        <div
+                          className="text-[10px] text-slate-400 mt-1 flex flex-col items-end gap-0.5 tabular-nums"
+                          title="P: Pokok, W: Wajib, S: Sukarela, KW: Karyawisata"
+                        >
+                          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                            <span>P: {formatRupiah(savings.pokok)}</span>
+                            <span className="text-slate-300">&bull;</span>
+                            <span>W: {formatRupiah(savings.wajib)}</span>
+                          </div>
+                          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                            <span>S: {formatRupiah(savings.sukarela)}</span>
+                            <span className="text-slate-300">&bull;</span>
+                            <span className="text-teal-600 font-semibold">
+                              KW: {formatRupiah(savings.wisata)}
+                            </span>
+                          </div>
                         </div>
                       </td>
 
@@ -491,6 +520,7 @@ export const MemberList: React.FC<MemberListProps> = ({
                             onClick={() => setSelectedMemberDetail(member)}
                             className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition shadow-2xs"
                             title="Lihat Detail & Buku Rekening Anggota"
+                            aria-label={`Lihat detail ${member.name}`}
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -500,6 +530,7 @@ export const MemberList: React.FC<MemberListProps> = ({
                             onClick={() => handleOpenEditModal(member)}
                             className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition shadow-2xs"
                             title="Edit Data Anggota"
+                            aria-label={`Edit ${member.name}`}
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -509,6 +540,7 @@ export const MemberList: React.FC<MemberListProps> = ({
                             onClick={() => handleDelete(member)}
                             className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl transition shadow-2xs"
                             title="Hapus Data Anggota"
+                            aria-label={`Hapus ${member.name}`}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -534,9 +566,9 @@ export const MemberList: React.FC<MemberListProps> = ({
 
       {/* Detail Riwayat Anggota Modal */}
       <MemberDetailModal
-        isOpen={!!selectedMemberDetail}
+        isOpen={!!activeMemberDetail}
         onClose={() => setSelectedMemberDetail(null)}
-        member={selectedMemberDetail}
+        member={activeMemberDetail}
         savingsRecords={savingsRecords}
         loanRecords={effectiveLoans}
         transactions={transactions}

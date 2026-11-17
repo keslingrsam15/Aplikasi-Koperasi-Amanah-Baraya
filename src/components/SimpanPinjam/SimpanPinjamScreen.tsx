@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Member, SavingsRecord, LoanRecord, UserProfile } from '../../types';
+import { getAllMembersSavingsSummary } from '../../utils/savingsCalculator';
 import { SavingsManagement } from './SavingsManagement';
 import { LoanManagement } from './LoanManagement';
 import { Landmark, PiggyBank, CreditCard, Users, PlusCircle, ArrowRightLeft } from 'lucide-react';
@@ -36,10 +37,7 @@ export const SimpanPinjamScreen: React.FC<SimpanPinjamScreenProps> = ({
   const [activeTab, setActiveTab] = useState<'savings' | 'loans'>(initialTab);
 
   // Total summary for header badges
-  const totalAllSavings = members.reduce(
-    (sum, m) => sum + (m.simpananPokok + m.simpananWajib + m.simpananSukarela),
-    0
-  );
+  const { totalAllSavings } = getAllMembersSavingsSummary(members);
   const activeLoans = loans.filter((l) => l.status === 'active');
   const totalSisaPinjaman = activeLoans.reduce((sum, l) => sum + l.remainingAmount, 0);
 
@@ -56,7 +54,7 @@ export const SimpanPinjamScreen: React.FC<SimpanPinjamScreenProps> = ({
               Unit Simpan Pinjam Koperasi
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Kelola simpanan pokok/wajib/sukarela, pengajuan pinjaman, dan pemantauan angsuran anggota
+              Kelola simpanan pokok/wajib/sukarela/karyawisata, pengajuan pinjaman, dan pemantauan angsuran anggota
             </p>
           </div>
         </div>

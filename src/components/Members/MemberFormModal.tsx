@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Member } from '../../types';
+import { getMemberTotalSavings } from '../../utils/savingsCalculator';
 import { X, UserCheck, Save, Plus, Check } from 'lucide-react';
 
 const STORAGE_UNIT_KEY = 'koperasi_rsud_unit_kerja_list';
@@ -93,7 +94,14 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 
   useEffect(() => {
     if (memberToEdit) {
-      setFormData({ ...memberToEdit });
+      setFormData({
+        ...memberToEdit,
+        simpananPokok: Number(memberToEdit.simpananPokok || 0),
+        simpananWajib: Number(memberToEdit.simpananWajib || 0),
+        simpananSukarela: Number(memberToEdit.simpananSukarela || 0),
+        simpananWisata: Number(memberToEdit.simpananWisata || 0),
+        kekuranganKaryawisata: Number(memberToEdit.kekuranganKaryawisata || 0),
+      });
       setUnitInput(memberToEdit.unitKerja || '');
       if (
         memberToEdit.unitKerja &&
@@ -402,17 +410,24 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                <label htmlFor="input-simpanan-pokok" className="block font-bold text-slate-700 mb-1 text-[11px] tracking-tight whitespace-nowrap">
                   Simpanan Pokok:
                 </label>
                 <div className="relative">
                   <span className="absolute left-2.5 top-2 text-slate-400 font-bold">Rp</span>
                   <input
+                    id="input-simpanan-pokok"
                     type="number"
                     min="0"
                     step="1000"
                     value={formData.simpananPokok ?? 0}
-                    onChange={(e) => setFormData({ ...formData, simpananPokok: parseFloat(e.target.value) || 0 })}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        simpananPokok: Math.max(0, Number(e.target.value) || 0),
+                      })
+                    }
                     className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -420,17 +435,24 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                <label htmlFor="input-simpanan-wajib" className="block font-bold text-slate-700 mb-1 text-[11px] tracking-tight whitespace-nowrap">
                   Simpanan Wajib:
                 </label>
                 <div className="relative">
                   <span className="absolute left-2.5 top-2 text-slate-400 font-bold">Rp</span>
                   <input
+                    id="input-simpanan-wajib"
                     type="number"
                     min="0"
                     step="1000"
                     value={formData.simpananWajib ?? 0}
-                    onChange={(e) => setFormData({ ...formData, simpananWajib: parseFloat(e.target.value) || 0 })}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        simpananWajib: Math.max(0, Number(e.target.value) || 0),
+                      })
+                    }
                     className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -438,17 +460,24 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                <label htmlFor="input-simpanan-sukarela" className="block font-bold text-slate-700 mb-1 text-[11px] tracking-tight whitespace-nowrap">
                   Simpanan Sukarela:
                 </label>
                 <div className="relative">
                   <span className="absolute left-2.5 top-2 text-slate-400 font-bold">Rp</span>
                   <input
+                    id="input-simpanan-sukarela"
                     type="number"
                     min="0"
                     step="1000"
                     value={formData.simpananSukarela ?? 0}
-                    onChange={(e) => setFormData({ ...formData, simpananSukarela: parseFloat(e.target.value) || 0 })}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        simpananSukarela: Math.max(0, Number(e.target.value) || 0),
+                      })
+                    }
                     className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -456,17 +485,24 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-[11px]">
+                <label htmlFor="input-simpanan-karyawisata" className="block font-bold text-slate-700 mb-1 text-[11px] tracking-tight whitespace-nowrap">
                   Simpanan Karyawisata:
                 </label>
                 <div className="relative">
                   <span className="absolute left-2.5 top-2 text-slate-400 font-bold">Rp</span>
                   <input
+                    id="input-simpanan-karyawisata"
                     type="number"
                     min="0"
                     step="1000"
                     value={formData.simpananWisata ?? 0}
-                    onChange={(e) => setFormData({ ...formData, simpananWisata: parseFloat(e.target.value) || 0 })}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        simpananWisata: Math.max(0, Number(e.target.value) || 0),
+                      })
+                    }
                     className="w-full pl-8 pr-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -476,12 +512,12 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 
             <div className="text-right font-bold text-xs text-emerald-800 pt-1 border-t border-emerald-200/60">
               Total Simpanan: Rp{' '}
-              {(
-                Number(formData.simpananPokok || 0) +
-                Number(formData.simpananWajib || 0) +
-                Number(formData.simpananSukarela || 0) +
-                Number(formData.simpananWisata || 0)
-              ).toLocaleString('id-ID')}
+              {getMemberTotalSavings({
+                simpananPokok: formData.simpananPokok || 0,
+                simpananWajib: formData.simpananWajib || 0,
+                simpananSukarela: formData.simpananSukarela || 0,
+                simpananWisata: formData.simpananWisata || 0,
+              }).toLocaleString('id-ID')}
             </div>
           </div>
 

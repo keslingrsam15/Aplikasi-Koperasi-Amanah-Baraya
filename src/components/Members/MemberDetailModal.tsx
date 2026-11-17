@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Member, SavingsRecord, LoanRecord, Transaction } from '../../types';
 import { formatRupiah, formatDateTimeIndo, formatDateIndo, exportToCSV } from '../../utils/formatters';
+import { getMemberSavingsBreakdown } from '../../utils/savingsCalculator';
 import {
   X,
   User,
@@ -68,7 +69,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Metrics
-  const totalSimpanan = member.simpananPokok + member.simpananWajib + member.simpananSukarela;
+  const savingsBreakdown = getMemberSavingsBreakdown(member);
+  const totalSimpanan = savingsBreakdown.total;
   const activeLoans = memberLoans.filter((l) => l.status === 'active');
   const totalSisaPinjaman = activeLoans.reduce((sum, l) => sum + l.remainingAmount, 0);
   const totalBelanjaToko = memberTransactions.reduce((sum, t) => sum + t.grandTotal, 0);
@@ -199,12 +201,17 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               <div className="text-base sm:text-lg font-black text-white mt-1">
                 {formatRupiah(totalSimpanan)}
               </div>
-              <div className="text-[10px] text-emerald-300/80 mt-0.5 flex items-center gap-2">
-                <span>P: {formatRupiah(member.simpananPokok)}</span>
-                <span>•</span>
-                <span>W: {formatRupiah(member.simpananWajib)}</span>
-                <span>•</span>
-                <span>S: {formatRupiah(member.simpananSukarela)}</span>
+              <div className="text-[10px] text-emerald-200/90 mt-1 space-y-0.5 tabular-nums">
+                <div className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span>P: {formatRupiah(savingsBreakdown.pokok)}</span>
+                  <span className="text-emerald-400/60">&bull;</span>
+                  <span>W: {formatRupiah(savingsBreakdown.wajib)}</span>
+                </div>
+                <div className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span>S: {formatRupiah(savingsBreakdown.sukarela)}</span>
+                  <span className="text-emerald-400/60">&bull;</span>
+                  <span className="text-teal-200 font-semibold">KW: {formatRupiah(savingsBreakdown.wisata)}</span>
+                </div>
               </div>
             </div>
 
@@ -286,7 +293,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                 <div>
                   <h4 className="font-bold text-slate-800 text-sm">Histori Mutasi Simpanan</h4>
                   <p className="text-xs text-slate-500">
-                    Catatan setoran & penarikan simpanan pokok, wajib, dan sukarela
+                    Catatan setoran & penarikan simpanan pokok, wajib, sukarela, dan karyawisata
                   </p>
                 </div>
 
