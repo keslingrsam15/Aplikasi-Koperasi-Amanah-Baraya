@@ -158,10 +158,10 @@ export const PosScreen: React.FC<PosScreenProps> = ({
       }
     });
 
-    // Re-focus barcode input
-    setTimeout(() => {
-      barcodeInputRef.current?.focus();
-    }, 50);
+    // Jangan arahkan kursor otomatis ke kolom pencarian; kolom pencarian hanya fokus saat diklik pengguna
+    if (barcodeInputRef.current && document.activeElement === barcodeInputRef.current) {
+      barcodeInputRef.current.blur();
+    }
   };
 
   // Barcode scanned / entered
@@ -420,6 +420,7 @@ export const PosScreen: React.FC<PosScreenProps> = ({
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-slate-700 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
+                  id="input-pos-search"
                   ref={barcodeInputRef}
                   type="text"
                   placeholder="Cari nama barang atau kode produk..."
