@@ -242,5 +242,10 @@ export interface CoopConfig {
   shuConfig?: ShuConfig;
   lpjSavedParams?: Record<string, any>;
   lpjEditedPages?: Record<string, Record<string, string>>;
+  qrisImageUrl?: string; // URL / Base64 gambar poster QRIS Koperasi
+  qrisStaticPayload?: string; // Payload EMVCo QRIS statis untuk membuat QRIS Dinamis (nominal otomatis)
+  qrisMerchantName?: string; // Nama Merchant QRIS
+  qrisNmid?: string; // National Merchant ID QRIS
+  qrisDefaultMode?: 'dynamic' | 'static'; // Mode tampilan QRIS bawaan di kasir
 }
 

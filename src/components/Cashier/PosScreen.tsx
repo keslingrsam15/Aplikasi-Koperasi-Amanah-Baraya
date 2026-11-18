@@ -4,6 +4,7 @@ import { formatRupiah, playScanSound, playSuccessSound, playErrorSound, generate
 import { getMemberTotalSavings } from '../../utils/savingsCalculator';
 import { CameraScannerModal } from '../Scanner/CameraScannerModal';
 import { ReceiptModal } from './ReceiptModal';
+import { QrisPaymentPanel } from './QrisPaymentPanel';
 import confetti from 'canvas-confetti';
 import {
   Barcode,
@@ -980,19 +981,9 @@ export const PosScreen: React.FC<PosScreenProps> = ({
                 </div>
               )}
 
-              {/* QRIS specific helper */}
+              {/* QRIS Baraya dynamic & official static poster payment view */}
               {paymentMethod === 'qris' && (
-                <div className="p-4 bg-slate-50 rounded-2xl border-2 border-slate-300 text-center space-y-2">
-                  <div className="w-24 h-24 mx-auto bg-white p-2 rounded-xl shadow-sm border border-slate-300 flex items-center justify-center">
-                    <Barcode className="w-16 h-16 text-slate-950" />
-                  </div>
-                  <p className="text-xs font-black text-slate-950">
-                    QRIS Baraya RSUD Al-Mulk Aktif
-                  </p>
-                  <p className="text-[11px] font-bold text-slate-800">
-                    Mendukung GoPay, OVO, Dana, ShopeePay, BCA Mobile, Livin Mandiri, dll.
-                  </p>
-                </div>
+                <QrisPaymentPanel grandTotal={grandTotal} coopConfig={coopConfig} />
               )}
 
               {/* Potong Gaji specific */}

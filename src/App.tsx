@@ -21,6 +21,12 @@ import {
   initialLoans,
 } from './data/initialData';
 import {
+  DEFAULT_QRIS_IMAGE_URL,
+  DEFAULT_QRIS_MERCHANT_NAME,
+  DEFAULT_QRIS_NMID,
+  DEFAULT_QRIS_STATIC_PAYLOAD,
+} from './utils/qrisDynamic';
+import {
   fetchProductsFromSupabase,
   saveProductToSupabase,
   deleteProductFromSupabase,
@@ -154,9 +160,21 @@ export function App() {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.CONFIG);
       if (saved) {
-        const parsed = JSON.parse(saved);
+        const parsed: CoopConfig = JSON.parse(saved);
+        let needsPersist = false;
         if (parsed.name && /karyawan/i.test(parsed.name)) {
           parsed.name = parsed.name.replace(/karyawan\s*/gi, '').replace(/\s+/g, ' ').trim();
+          needsPersist = true;
+        }
+        if (!parsed.qrisImageUrl) {
+          parsed.qrisImageUrl = DEFAULT_QRIS_IMAGE_URL;
+          parsed.qrisStaticPayload = parsed.qrisStaticPayload ?? DEFAULT_QRIS_STATIC_PAYLOAD;
+          parsed.qrisMerchantName = parsed.qrisMerchantName ?? DEFAULT_QRIS_MERCHANT_NAME;
+          parsed.qrisNmid = parsed.qrisNmid ?? DEFAULT_QRIS_NMID;
+          parsed.qrisDefaultMode = parsed.qrisDefaultMode ?? 'dynamic';
+          needsPersist = true;
+        }
+        if (needsPersist) {
           localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(parsed));
         }
         return parsed;
@@ -348,8 +366,20 @@ export function App() {
         }
 
         if (cloudConfig !== null) {
+          let needsCloudUpdate = false;
           if (cloudConfig.name && /karyawan/i.test(cloudConfig.name)) {
             cloudConfig.name = cloudConfig.name.replace(/karyawan\s*/gi, '').replace(/\s+/g, ' ').trim();
+            needsCloudUpdate = true;
+          }
+          if (!cloudConfig.qrisImageUrl) {
+            cloudConfig.qrisImageUrl = DEFAULT_QRIS_IMAGE_URL;
+            cloudConfig.qrisStaticPayload = cloudConfig.qrisStaticPayload ?? DEFAULT_QRIS_STATIC_PAYLOAD;
+            cloudConfig.qrisMerchantName = cloudConfig.qrisMerchantName ?? DEFAULT_QRIS_MERCHANT_NAME;
+            cloudConfig.qrisNmid = cloudConfig.qrisNmid ?? DEFAULT_QRIS_NMID;
+            cloudConfig.qrisDefaultMode = cloudConfig.qrisDefaultMode ?? 'dynamic';
+            needsCloudUpdate = true;
+          }
+          if (needsCloudUpdate) {
             saveConfigToSupabase(cloudConfig);
           }
           setCoopConfig(cloudConfig);

@@ -1,4 +1,10 @@
 import { Product, UserProfile, Transaction, StockMutation, CoopConfig, Member, SavingsRecord, LoanRecord } from '../types';
+import {
+  DEFAULT_QRIS_IMAGE_URL,
+  DEFAULT_QRIS_MERCHANT_NAME,
+  DEFAULT_QRIS_NMID,
+  DEFAULT_QRIS_STATIC_PAYLOAD,
+} from '../utils/qrisDynamic';
 
 export const initialUnitKerjaList = [
   'Ruang Rawat Inap Melati',
@@ -35,6 +41,11 @@ export const initialCoopConfig: CoopConfig = {
   receiptFooter: 'Terima kasih atas kunjungan & partisipasi Anda.\nBarang yang sudah dibeli dapat ditukar dengan struk.',
   paperWidth: '58mm',
   taxPercent: 0,
+  qrisImageUrl: DEFAULT_QRIS_IMAGE_URL,
+  qrisStaticPayload: DEFAULT_QRIS_STATIC_PAYLOAD,
+  qrisMerchantName: DEFAULT_QRIS_MERCHANT_NAME,
+  qrisNmid: DEFAULT_QRIS_NMID,
+  qrisDefaultMode: 'dynamic',
   printerConfig: {
     connectionType: 'browser',
     paperWidth: '58mm',

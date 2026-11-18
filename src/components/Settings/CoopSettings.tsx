@@ -34,6 +34,7 @@ import {
   X,
   Sparkles,
   Sliders,
+  QrCode,
 } from 'lucide-react';
 import { defaultBannerSlides } from '../Dashboard/BannerSlider';
 import {
@@ -57,11 +58,21 @@ import {
   fetchConfigFromSupabase,
   saveConfigToSupabase,
   uploadCoopLogo,
+  uploadQrisImage,
   uploadBannerImage,
   uploadWelcomeWallpaper,
   SUPABASE_SQL_SCHEMA,
   getMissingTables,
 } from '../../services/supabase';
+import {
+  DEFAULT_QRIS_IMAGE_URL,
+  DEFAULT_QRIS_MERCHANT_NAME,
+  DEFAULT_QRIS_NMID,
+  DEFAULT_QRIS_STATIC_PAYLOAD,
+  parseQrisMetadata,
+  resolveCoopQrisConfig,
+} from '../../utils/qrisDynamic';
+import { decodeQrisFromImageFile } from '../../utils/qrisImageDecoder';
 
 interface CoopSettingsProps {
   config: CoopConfig;
@@ -271,6 +282,97 @@ export const CoopSettings: React.FC<CoopSettingsProps> = ({
     onSaveConfig(updatedConfig);
     await saveConfigToSupabase(updatedConfig);
     showToast('Logo koperasi berhasil dihapus.', 'info');
+  };
+
+  // QRIS Payment Settings State & Handlers
+  const [isUploadingQris, setIsUploadingQris] = useState<boolean>(false);
+  const [showAdvancedQris, setShowAdvancedQris] = useState<boolean>(false);
+  const resolvedQris = React.useMemo(() => resolveCoopQrisConfig(formConfig), [formConfig]);
+
+  const handleQrisImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Harap pilih file gambar QRIS (PNG, JPG, WebP)', 'error');
+      return;
+    }
+
+    setIsUploadingQris(true);
+    try {
+      const [uploadedUrl, decodedPayload] = await Promise.all([
+        uploadQrisImage(file),
+        decodeQrisFromImageFile(file).catch(() => null),
+      ]);
+
+      const parsedMeta = decodedPayload ? parseQrisMetadata(decodedPayload) : null;
+      const updatedConfig: CoopConfig = {
+        ...formConfig,
+        qrisImageUrl: uploadedUrl,
+        ...(parsedMeta?.isValid && decodedPayload
+          ? {
+              qrisStaticPayload: decodedPayload,
+              qrisMerchantName: parsedMeta.merchantName || formConfig.qrisMerchantName || DEFAULT_QRIS_MERCHANT_NAME,
+              qrisNmid: parsedMeta.nmid || formConfig.qrisNmid || DEFAULT_QRIS_NMID,
+            }
+          : {
+              qrisStaticPayload: '',
+              qrisDefaultMode: 'static' as const,
+            }),
+      };
+
+      setFormConfig(updatedConfig);
+      onSaveConfig(updatedConfig);
+      await saveConfigToSupabase(updatedConfig);
+
+      if (parsedMeta?.isValid) {
+        showToast(
+          `Gambar QRIS berhasil diunggah & kode EMVCo (${parsedMeta.merchantName || 'Valid'}) otomatis terdeteksi untuk QRIS Dinamis!`,
+          'success'
+        );
+      } else {
+        showToast(
+          'Gambar QRIS berhasil diunggah ke Supabase Cloud (mode tampilan Poster QRIS Statis).',
+          'success'
+        );
+      }
+    } catch (err: any) {
+      showToast('Gagal mengunggah gambar QRIS: ' + (err?.message || String(err)), 'error');
+    } finally {
+      setIsUploadingQris(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleQrisModeChange = async (mode: 'dynamic' | 'static') => {
+    const updatedConfig: CoopConfig = {
+      ...formConfig,
+      qrisDefaultMode: mode,
+    };
+    setFormConfig(updatedConfig);
+    onSaveConfig(updatedConfig);
+    await saveConfigToSupabase(updatedConfig);
+    showToast(
+      mode === 'dynamic'
+        ? 'Mode QRIS Kasir diatur ke QRIS Dinamis (Nominal Otomatis).'
+        : 'Mode QRIS Kasir diatur ke Poster QRIS Resmi (Statis).',
+      'success'
+    );
+  };
+
+  const handleResetDefaultQris = async () => {
+    const updatedConfig: CoopConfig = {
+      ...formConfig,
+      qrisImageUrl: DEFAULT_QRIS_IMAGE_URL,
+      qrisStaticPayload: DEFAULT_QRIS_STATIC_PAYLOAD,
+      qrisMerchantName: DEFAULT_QRIS_MERCHANT_NAME,
+      qrisNmid: DEFAULT_QRIS_NMID,
+      qrisDefaultMode: 'dynamic',
+    };
+    setFormConfig(updatedConfig);
+    onSaveConfig(updatedConfig);
+    await saveConfigToSupabase(updatedConfig);
+    showToast('QRIS dikembalikan ke QRIS Resmi Koperasi Amanah Baraya!', 'success');
   };
 
   const [isUploadingWallpaper, setIsUploadingWallpaper] = useState<boolean>(false);
@@ -857,6 +959,251 @@ export const CoopSettings: React.FC<CoopSettingsProps> = ({
                 onChange={(e) => setFormConfig({ ...formConfig, phone: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Pengaturan QRIS Pembayaran Kasir */}
+        <div
+          id="section-qris-settings"
+          data-testid="qris-settings-section"
+          className="bg-white p-5 rounded-3xl border border-white shadow-[10px_10px_30px_rgba(0,0,0,0.2),-10px_-10px_30px_rgba(255,255,255,0.8)] space-y-4 text-xs"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold shadow-xs">
+                <QrCode className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Pengaturan QRIS Pembayaran Kasir
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Tampil otomatis di modal pembayaran Kasir (QRIS Dinamis nominal otomatis &amp; Poster QRIS Resmi). Tersimpan di Supabase Cloud.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleResetDefaultQris}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Gunakan QRIS Bawaan</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+            {/* Poster Preview */}
+            <div className="md:col-span-4 bg-slate-50 rounded-2xl border border-slate-200 p-3 flex flex-col items-center space-y-2.5">
+              <div className="w-full bg-white rounded-xl border border-slate-200 p-2 flex items-center justify-center overflow-hidden">
+                <img
+                  data-testid="settings-qris-preview"
+                  src={resolvedQris.imageUrl}
+                  alt={`Preview QRIS ${resolvedQris.merchantName}`}
+                  className="max-h-60 w-auto object-contain rounded-lg"
+                />
+              </div>
+              <div className="w-full text-center space-y-1">
+                <p className="text-xs font-black text-slate-900 truncate">
+                  {resolvedQris.merchantName}
+                </p>
+                <p className="text-[11px] font-semibold text-slate-600">
+                  NMID: {resolvedQris.nmid}
+                </p>
+                {resolvedQris.hasValidPayload ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 font-bold text-[10px]">
+                    <CheckCircle2 className="w-3 h-3" />
+                    EMVCo Valid &bull; QRIS Dinamis Siap
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-900 font-bold text-[10px]">
+                    <AlertCircle className="w-3 h-3" />
+                    Mode Poster Statis Saja
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Configuration Controls */}
+            <div className="md:col-span-8 space-y-3.5">
+              {/* Default Mode Selector */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <span className="font-bold text-slate-800 block">
+                  Mode Tampilan QRIS Bawaan di Menu Kasir:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    id="btn-settings-qris-dynamic"
+                    type="button"
+                    disabled={!resolvedQris.hasValidPayload}
+                    onClick={() => handleQrisModeChange('dynamic')}
+                    className={`p-3 rounded-xl border-2 text-left transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                      resolvedQris.defaultMode === 'dynamic'
+                        ? 'bg-emerald-50 border-emerald-700 text-emerald-950 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-black text-xs flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
+                        QRIS Dinamis (Disarankan)
+                      </span>
+                      {resolvedQris.defaultMode === 'dynamic' && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                      Nominal belanja otomatis terisi di aplikasi pembayaran pelanggan saat scan.
+                    </p>
+                  </button>
+
+                  <button
+                    id="btn-settings-qris-static"
+                    type="button"
+                    onClick={() => handleQrisModeChange('static')}
+                    className={`p-3 rounded-xl border-2 text-left transition cursor-pointer ${
+                      resolvedQris.defaultMode === 'static'
+                        ? 'bg-emerald-50 border-emerald-700 text-emerald-950 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-black text-xs flex items-center gap-1.5">
+                        <ImageIcon className="w-3.5 h-3.5 text-emerald-700" />
+                        Poster QRIS Resmi (Statis)
+                      </span>
+                      {resolvedQris.defaultMode === 'static' && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                      Menampilkan gambar poster QRIS resmi secara penuh; pelanggan ketik nominal manual.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Upload New QRIS Poster */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <span className="font-bold text-slate-800 block">
+                  Ganti Gambar Poster QRIS Koperasi:
+                </span>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold cursor-pointer transition shadow-xs">
+                    {isUploadingQris ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Mengunggah &amp; Membaca QRIS...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        <span>Unggah Gambar QRIS Baru</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleQrisImageUpload}
+                      disabled={isUploadingQris}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-[11px] text-slate-500">
+                    Otomatis membaca kode QRIS EMVCo dan menyimpan ke Supabase Storage.
+                  </span>
+                </div>
+              </div>
+
+              {/* Collapsible Advanced EMVCo Payload & URL Editor */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedQris((prev) => !prev)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-slate-800 font-bold transition cursor-pointer"
+                >
+                  <span>Pengaturan Lanjutan (URL Gambar, NMID &amp; Kode EMVCo)</span>
+                  <span className="text-[11px] text-emerald-700">
+                    {showAdvancedQris ? 'Sembunyikan' : 'Tampilkan'}
+                  </span>
+                </button>
+
+                {showAdvancedQris && (
+                  <div className="p-3.5 bg-white space-y-3 border-t border-slate-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">
+                          Nama Merchant QRIS:
+                        </label>
+                        <input
+                          type="text"
+                          value={formConfig.qrisMerchantName ?? resolvedQris.merchantName}
+                          onChange={(e) =>
+                            setFormConfig({ ...formConfig, qrisMerchantName: e.target.value })
+                          }
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">
+                          NMID QRIS:
+                        </label>
+                        <input
+                          type="text"
+                          value={formConfig.qrisNmid ?? resolvedQris.nmid}
+                          onChange={(e) =>
+                            setFormConfig({ ...formConfig, qrisNmid: e.target.value })
+                          }
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        URL Gambar Poster QRIS:
+                      </label>
+                      <input
+                        type="text"
+                        value={formConfig.qrisImageUrl ?? resolvedQris.imageUrl}
+                        onChange={(e) =>
+                          setFormConfig({ ...formConfig, qrisImageUrl: e.target.value })
+                        }
+                        placeholder="/assets/aistudio/image_8e0e5b91.png atau https://..."
+                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        Payload String EMVCo QRIS Statis (untuk Nominal Otomatis):
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={formConfig.qrisStaticPayload ?? resolvedQris.staticPayload}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          const meta = parseQrisMetadata(val);
+                          setFormConfig({
+                            ...formConfig,
+                            qrisStaticPayload: val,
+                            ...(meta.isValid && meta.merchantName
+                              ? { qrisMerchantName: meta.merchantName }
+                              : {}),
+                            ...(meta.isValid && meta.nmid ? { qrisNmid: meta.nmid } : {}),
+                          });
+                        }}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-mono text-[11px] text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        Klik tombol <strong>Simpan Pengaturan</strong> di bagian bawah halaman setelah mengubah data lanjutan secara manual.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
